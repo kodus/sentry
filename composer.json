@@ -1,0 +1,29 @@
+{
+    "name": "kodus/sentry",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Rasmus Schultz",
+            "email": "rasc@jfmedier.dk"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "mindplay/readable": "^1.1",
+        "psr/http-message": "^1.0"
+    },
+    "require-dev": {
+        "mindplay/testies": "^0.3.1",
+        "nyholm/psr7": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kodus\\Sentry\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "\\": "test/"
+        }
+    }
+}
