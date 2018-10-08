@@ -8,6 +8,7 @@ use ReflectionException;
 use ReflectionFunction;
 use ReflectionFunctionAbstract;
 use ReflectionMethod;
+use RuntimeException;
 use SplFileObject;
 use Throwable;
 
@@ -44,11 +45,6 @@ class SentryClient
     ];
 
     /**
-     * @var HttpClient
-     */
-    private $http;
-
-    /**
      * @var string X-Sentry authentication header template
      */
     private $auth_header;
@@ -69,14 +65,11 @@ class SentryClient
     private $runtime;
 
     /**
-     * @param string          $dsn  Sentry DSN
-     * @param HttpClient|null $http optional HTTP client (usually omitted)
+     * @param string $dsn Sentry DSN
      */
-    public function __construct(string $dsn, HttpClient $http = null)
+    public function __construct(string $dsn)
     {
         $this->dsn = $dsn;
-
-        $this->http = $http ?: new HttpClient();
 
         $url = parse_url($this->dsn);
 
@@ -135,7 +128,7 @@ class SentryClient
             $this->createAuthHeader($timestamp),
         ];
 
-        $response = $this->http->fetch("POST", $this->url, $body, $headers);
+        $response = $this->fetch("POST", $this->url, $body, $headers);
 
         return $response;
     }
@@ -278,7 +271,7 @@ class SentryClient
 
         $lineno = array_key_exists("line", $entry)
             ? (int) $entry["line"]
-            : null;
+            : 0;
 
         $frame = new StackFrame($filename, $function, $lineno);
 
@@ -496,5 +489,48 @@ class SentryClient
         }
 
         return "{{$type}}"; // "unknown type" and possibly unsupported (future) types
+    }
+
+    /**
+     * Perform an HTTP request and return the response body.
+     *
+     * The request must return a 200 status-code.
+     *
+     * @param string $method HTTP method ("GET", "POST", etc.)
+     * @param string $url
+     * @param string $body
+     * @param array  $headers
+     *
+     * @return string response body
+     */
+    protected function fetch(string $method, string $url, string $body, array $headers = []): string
+    {
+        $context = stream_context_create([
+            "http" => [
+                // http://docs.php.net/manual/en/context.http.php
+                "method"        => $method,
+                "header"        => implode("\r\n", $headers),
+                "content"       => $body,
+                "ignore_errors" => true,
+            ],
+        ]);
+
+        $response = file_get_contents($url, false, $context);
+
+        /**
+         * @var array $http_response_header materializes out of thin air
+         */
+
+        $status_line = $http_response_header[0];
+
+        preg_match('{HTTP\/\S*\s(\d{3})}', $status_line, $match);
+
+        $status = $match[1];
+
+        if ($status !== "200") {
+            throw new RuntimeException("unexpected response status: {$status_line} ({$method} {$url})");
+        }
+
+        return $response;
     }
 }
