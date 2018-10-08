@@ -2,7 +2,13 @@
 
 namespace Kodus\Sentry;
 
+use Closure;
 use Psr\Http\Message\ServerRequestInterface;
+use ReflectionException;
+use ReflectionFunction;
+use ReflectionFunctionAbstract;
+use ReflectionMethod;
+use SplFileObject;
 use Throwable;
 
 class SentryClient
@@ -43,7 +49,7 @@ class SentryClient
     private $http;
 
     /**
-     * @var string X-Sentry authentication header
+     * @var string X-Sentry authentication header template
      */
     private $auth_header;
 
@@ -69,6 +75,7 @@ class SentryClient
     public function __construct(string $dsn, HttpClient $http = null)
     {
         $this->dsn = $dsn;
+
         $this->http = $http ?: new HttpClient();
 
         $url = parse_url($this->dsn);
@@ -88,10 +95,13 @@ class SentryClient
         $this->url = "{$url['scheme']}://{$url['host']}/api{$url['path']}/store/";
 
         $this->os = new OSContext();
+
         $this->runtime = new RuntimeContext();
     }
 
     /**
+     * Capture details about a given {@see Throwable} and (optionally) an associated {@see ServerRequestInterface}.
+     *
      * @param Throwable                   $exception the Exception to be logged
      * @param ServerRequestInterface|null $request   the PSR-7 Request (if applicable)
      *
@@ -104,6 +114,8 @@ class SentryClient
         $event_id = $this->createEventID();
 
         $event = new Event($event_id, $timestamp, $exception->getMessage());
+
+        $event->exception = $this->createExceptionList($exception);
 
         $event->addContext($this->os);
 
@@ -128,6 +140,9 @@ class SentryClient
         return $response;
     }
 
+    /**
+     * @return int current time
+     */
     protected function createTimestamp(): int
     {
         return time();
@@ -150,15 +165,26 @@ class SentryClient
         );
     }
 
+    /**
+     * Creates the `X-Sentry-Auth` header.
+     *
+     * @param int $timestamp
+     *
+     * @return string
+     */
     private function createAuthHeader(int $timestamp)
     {
         return sprintf($this->auth_header, $timestamp);
     }
 
-    private function addRequestDetails(Event $event, ServerRequestInterface $request)
+    /**
+     * Populates the given {@see Event} instance with information about the given {@see ServerRequestInterface}.
+     *
+     * @param Event                  $event
+     * @param ServerRequestInterface $request
+     */
+    protected function addRequestDetails(Event $event, ServerRequestInterface $request)
     {
-        // $event->addTag("site", $request->getUri()->getHost());
-
         $event->addTag("site", $request->getUri()->getHost());
 
         $event->request = new Request($request->getUri()->__toString(), $request->getMethod());
@@ -175,7 +201,300 @@ class SentryClient
 
         $event->request->headers = $headers;
 
-        // TODO data?
-        // TODO env?
+        // TODO populate $data with post-data (in whatever format is given)
+        // TODO populate $env ?
+    }
+
+    /**
+     * Creates an {@see ExceptionList} instance from a given {@see Throwable}.
+     *
+     * @param Throwable $exception
+     *
+     * @return ExceptionList
+     */
+    protected function createExceptionList(Throwable $exception): ExceptionList
+    {
+        $items = [];
+
+        while ($exception) {
+            $items[] = $this->createExceptionInfo($exception);
+
+            $exception = $exception->getPrevious();
+        }
+
+        return new ExceptionList(array_reverse($items));
+    }
+
+    /**
+     * Creates an {@see ExceptionInfo} intsance from a given {@see Throwable}.
+     *
+     * @param Throwable $exception
+     *
+     * @return ExceptionInfo
+     */
+    protected function createExceptionInfo(Throwable $exception): ExceptionInfo
+    {
+        $info = new ExceptionInfo(get_class($exception), $exception->getMessage());
+
+        $info->stacktrace = $this->createStackTrace($exception->getTrace());
+
+        return $info;
+    }
+
+    /**
+     * Creates a {@see StackTrace} instance from a given PHP stack-trace.
+     *
+     * @param array $trace PHP stack-trace
+     *
+     * @return StackTrace
+     */
+    protected function createStackTrace(array $trace): StackTrace
+    {
+        $frames = [];
+
+        foreach ($trace as $index => $entry) {
+            $frames[] = $this->createStackFrame($entry);
+        }
+
+        return new StackTrace(array_reverse($frames));
+    }
+
+    /**
+     * Creates a {@see StackFrame} instance from a given PHP stack-trace entry.
+     *
+     * @param array $entry PHP stack-trace entry
+     *
+     * @return StackFrame
+     */
+    protected function createStackFrame(array $entry): StackFrame
+    {
+        $filename = isset($entry["file"])
+            ? $entry["file"]
+            : "{no file}";
+
+        $function = isset($entry["class"])
+            ? $entry["class"] . @$entry["type"] . @$entry["function"]
+            : @$entry["function"];
+
+        $lineno = array_key_exists("line", $entry)
+            ? (int) $entry["line"]
+            : null;
+
+        $frame = new StackFrame($filename, $function, $lineno);
+
+        if ($filename !== "{no file}") {
+            $this->loadContext($frame, $filename, $lineno, 5);
+        }
+
+        if (isset($entry['args'])) {
+            $frame->vars = $this->extractVars($entry);
+        }
+
+        return $frame;
+    }
+
+    /**
+     * Attempts to load lines of source-code "context" from a PHP script to a {@see StackFrame} instance.
+     *
+     * @param StackFrame $frame     Sentry Client StackFrame to populate
+     * @param string     $filename  path to PHP script
+     * @param int        $lineno
+     * @param int        $num_lines number of lines of context
+     */
+    protected function loadContext(StackFrame $frame, string $filename, int $lineno, int $num_lines)
+    {
+        if (! is_file($filename) || ! is_readable($filename)) {
+            return;
+        }
+
+        $target = max(0, ($lineno - ($num_lines + 1)));
+
+        $currentLineNumber = $target + 1;
+
+        try {
+            $file = new SplFileObject($filename);
+
+            $file->seek($target);
+
+            while (! $file->eof()) {
+                $line = rtrim($file->current(), "\r\n");
+
+                if ($currentLineNumber == $lineno) {
+                    $frame->context_line = $line;
+                } elseif ($currentLineNumber < $lineno) {
+                    $frame->pre_context[] = $line;
+                } elseif ($currentLineNumber > $lineno) {
+                    $frame->post_context[] = $line;
+                }
+
+                $currentLineNumber += 1;
+
+                if ($currentLineNumber > $lineno + $num_lines) {
+                    break;
+                }
+
+                $file->next();
+            }
+        } catch (\Exception $ex) {
+            return;
+        }
+    }
+
+    /**
+     * Extracts a map of parameters names to human-readable values from a given stack-frame.
+     *
+     * @param array $entry PHP stack-frame entry
+     *
+     * @return string[] map where parameter name => human-readable value string
+     */
+    protected function extractVars(array $entry)
+    {
+        $reflection = $this->getReflection($entry);
+
+        $names = $reflection
+            ? $this->getParameterNames($reflection)
+            : [];
+
+        $vars = [];
+
+        $values = $this->formatValues($entry['args']);
+
+        foreach ($values as $index => $value) {
+            $vars[$names[$index] ?? "#" . ($index + 1)] = $value;
+        }
+
+        return $vars;
+    }
+
+    /**
+     * Attempts to obtain a Function Reflection for a given stack-frame.
+     *
+     * @param array $entry PHP stack-frame entry
+     *
+     * @return ReflectionFunctionAbstract|null
+     */
+    protected function getReflection(array $entry): ?ReflectionFunctionAbstract
+    {
+        try {
+            if (isset($entry["class"])) {
+                if (method_exists($entry["class"], $entry["function"])) {
+                    return new ReflectionMethod($entry["class"], $entry["function"]);
+                } elseif ("::" === $entry["type"]) {
+                    return new ReflectionMethod($entry["class"], "__callStatic");
+                } else {
+                    return new ReflectionMethod($entry["class"], "__call");
+                }
+            } elseif (function_exists($entry["function"])) {
+                return new ReflectionFunction($entry["function"]);
+            }
+        } catch (ReflectionException $exception) {
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Creates a list of parameter-names for a given Function Reflection.
+     *
+     * @param ReflectionFunctionAbstract $reflection
+     *
+     * @return string[] list of parameter names
+     */
+    protected function getParameterNames(ReflectionFunctionAbstract $reflection): array
+    {
+        $names = [];
+
+        foreach ($reflection->getParameters() as $param) {
+            $names[] = "$" . $param->getName();
+        }
+
+        return $names;
+    }
+
+    /**
+     * Formats an array of raw PHP values as human-readable strings
+     *
+     * @param mixed[] $values raw PHP values
+     *
+     * @return string[] formatted values
+     */
+    protected function formatValues(array $values): array
+    {
+        $formatted = [];
+
+        foreach ($values as $value) {
+            $formatted[] = $this->formatValue($value);
+        }
+
+        return $formatted;
+    }
+
+    /**
+     * @var int maximum length of formatted string-values
+     *
+     * @see formatValue()
+     */
+    const MAX_STRING_LENGTH = 200;
+
+    /**
+     * Formats any given PHP value as a human-readable string
+     *
+     * @param mixed $value
+     *
+     * @return string
+     */
+    protected function formatValue($value): string
+    {
+        $type = is_array($value) && is_callable($value)
+            ? "callable"
+            : strtolower(gettype($value));
+
+        switch ($type) {
+            case "boolean":
+                return $value ? "true" : "false";
+
+            case "integer":
+                return number_format($value, 0, "", "");
+
+            case "double": // (for historical reasons "double" is returned in case of a float, and not simply "float")
+                $formatted = sprintf("%.6g", $value);
+
+                return $value == $formatted
+                    ? "{$formatted}"
+                    : "~{$formatted}";
+
+            case "string":
+                $string = strlen($value) > self::MAX_STRING_LENGTH
+                    ? substr($value, 0, self::MAX_STRING_LENGTH) . "...[" . strlen($value) . "]"
+                    : $value;
+
+                return '"' . addslashes($string) . '"';
+
+            case "array":
+                return "array[" . count($value) . "]";
+
+            case "object":
+                if ($value instanceof Closure) {
+                    $reflection = new ReflectionFunction($value);
+
+                    return "{Closure in " . $reflection->getFileName() . "({$reflection->getStartLine()})}";
+                }
+
+                return "{" . ($value instanceof \stdClass ? "object" : get_class($value)) . "}";
+
+            case "resource":
+                return "{" . get_resource_type($value) . "}";
+
+            case "callable":
+                return is_object($value[0])
+                    ? '{' . get_class($value[0]) . "}->{$value[1]}()"
+                    : "{$value[0]}::{$value[1]}()";
+
+            case "null":
+                return "null";
+        }
+
+        return "{{$type}}"; // "unknown type" and possibly unsupported (future) types
     }
 }

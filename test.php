@@ -8,6 +8,40 @@ use Nyholm\Psr7\ServerRequest;
 require_once __DIR__ . '/vendor/autoload.php';
 
 /**
+ * This provides a fixture for stack-trace test-cases
+ */
+class TraceFixture
+{
+    public function outer($arg)
+    {
+        try {
+            $this->inner($arg);
+        } catch (Exception $inner) {
+            throw new Exception("from outer: {$arg}", 0, $inner);
+        }
+    }
+
+    protected function inner($arg)
+    {
+        $closure = function () use ($arg) {
+            throw new Exception("from inner: {$arg}");
+        };
+
+        $closure();
+    }
+}
+
+function exception_with($arg): Exception {
+    $fixture = new TraceFixture();
+
+    try {
+        $fixture->outer($arg);
+    } catch (Exception $exception) {
+        return $exception;
+    }
+}
+
+/**
  * This model represents an HTTP Request for testing purposes
  */
 class Request
@@ -107,7 +141,7 @@ test(
 
         $client = new MockSentryClient(MockSentryClient::DSN, $http);
 
-        $client->captureException(new RuntimeException("ouch"));
+        $client->captureException(exception_with("ouch"));
 
         eq(count($http->requests), 1, "it performs a request");
 
@@ -128,41 +162,43 @@ test(
         eq($body["event_id"], $EVENT_ID);
         eq($body["timestamp"], gmdate(Event::DATE_FORMAT, $TIMESTAMP));
         eq($body["platform"], "php");
+
+        echo json_encode(json_decode($http->requests[0]->body, true), JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 );
 
-test(
-    "can capture Request details",
-    function () {
-        $http = new MockHttpClient();
+//test(
+//    "can capture Request details",
+//    function () {
+//        $http = new MockHttpClient();
+//
+//        $client = new MockSentryClient(MockSentryClient::DSN, $http);
+//
+//        $request = new ServerRequest(
+//            "POST",
+//            "https://example.com/hello",
+//            ["Content-Type" => "application/json"],
+//            '{"foo":"bar"}'
+//        );
+//
+//        $client->captureException(new RuntimeException("ouch"), $request);
+//
+//        echo json_encode(json_decode($http->requests[0]->body, true), JSON_PRETTY_PRINT);
+//    }
+//);
 
-        $client = new MockSentryClient(MockSentryClient::DSN, $http);
-
-        $request = new ServerRequest(
-            "POST",
-            "https://example.com/hello",
-            ["Content-Type" => "application/json"],
-            '{"foo":"bar"}'
-        );
-
-        $client->captureException(new RuntimeException("ouch"), $request);
-
-        var_dump($http->requests[0]->body);
-    }
-);
-
-$client = new SentryClient("https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571");
-
-$request = new ServerRequest(
-    "POST",
-    "https://example.com/hello",
-    [
-        "Content-Type" => "application/json",
-        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
-    ],
-    '{"foo":"bar"}'
-);
-
-$client->captureException(new RuntimeException("ouch"), $request);
+//$client = new SentryClient("https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571");
+//
+//$request = new ServerRequest(
+//    "POST",
+//    "https://example.com/hello",
+//    [
+//        "Content-Type" => "application/json",
+//        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
+//    ],
+//    '{"foo":"bar"}'
+//);
+//
+//$client->captureException(exception_with("ouch"), $request);
 
 exit(run());

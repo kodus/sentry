@@ -46,6 +46,11 @@ class Event implements JsonSerializable
     public $tags = [];
 
     /**
+     * @var ExceptionList|null
+     */
+    public $exception;
+
+    /**
      * @var Request|null
      */
     public $request;
