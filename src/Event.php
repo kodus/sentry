@@ -75,7 +75,7 @@ class Event implements JsonSerializable
      *
      * @param Context $context
      */
-    public function setContext(Context $context)
+    public function addContext(Context $context)
     {
         $this->contexts[$context->getType()] = $context;
     }
@@ -86,7 +86,7 @@ class Event implements JsonSerializable
      * @param string $name
      * @param string $value
      */
-    public function setTag(string $name, string $value)
+    public function addTag(string $name, string $value)
     {
         $this->tags[$name] = $value;
     }

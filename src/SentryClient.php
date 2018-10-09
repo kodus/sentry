@@ -172,11 +172,11 @@ class SentryClient
 
         $event->exception = $this->createExceptionList($exception);
 
-        $event->setContext($this->os);
+        $event->addContext($this->os);
 
-        $event->setContext($this->runtime);
+        $event->addContext($this->runtime);
 
-        $event->setTag("server_name", php_uname('n'));
+        $event->addTag("server_name", php_uname('n'));
 
         if ($request) {
             $this->addRequestDetails($event, $request);
@@ -240,7 +240,7 @@ class SentryClient
      */
     protected function addRequestDetails(Event $event, ServerRequestInterface $request)
     {
-        $event->setTag("site", $request->getUri()->getHost());
+        $event->addTag("site", $request->getUri()->getHost());
 
         $event->request = new Request($request->getUri()->__toString(), $request->getMethod());
 
@@ -257,7 +257,7 @@ class SentryClient
         $event->request->headers = $headers;
 
         if ($request->hasHeader("User-Agent")) {
-            $event->setContext($this->createBrowserContext($request->getHeaderLine("User-Agent")));
+            $this->applyBrowserContext($event, $request->getHeaderLine("User-Agent"));
         }
 
         // TODO populate $data with post-data (in whatever format is given)
@@ -636,11 +636,10 @@ class SentryClient
      *
      * @link https://github.com/DamonOehlman/detect-browser
      *
-     * @param ServerRequestInterface $request
-     *
-     * @return BrowserContext
+     * @param Event  $event
+     * @param string $user_agent
      */
-    private function createBrowserContext(string $user_agent): BrowserContext
+    private function applyBrowserContext(Event $event, string $user_agent)
     {
         $name = "unknown";
 
@@ -652,8 +651,12 @@ class SentryClient
             }
         }
 
+        $event->addTag("browser.name", $name);
+
         if ($name !== "bot" && isset($browser_matches[1])) {
             $version = implode(".", preg_split('/[._]/', $browser_matches[1]));
+
+            $event->addTag("browser.{$name}", $version);
 
             $name = "{$name}/{$version}";
         }
@@ -661,6 +664,8 @@ class SentryClient
         if ($name !== "unknown" && $name !== "bot") {
             foreach ($this->os_patterns as $pattern => $os) {
                 if (preg_match($pattern, $user_agent) === 1) {
+                    $event->addTag("browser.os", $os);
+
                     $name = "{$name}/{$os}";
 
                     break;
@@ -668,6 +673,6 @@ class SentryClient
             }
         }
 
-        return new BrowserContext($name, $user_agent);
+        $event->addContext(new BrowserContext($name, $user_agent));
     }
 }

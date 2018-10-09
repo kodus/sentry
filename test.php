@@ -423,6 +423,22 @@ test(
                 ],
                 "can capture browser context for: {$expected_name}"
             );
+
+            $browser_name = $body["contexts"]["browser"]["name"];
+
+            if ($browser_name === "bot" || $browser_name === "unknown") {
+                eq($body["tags"]["browser.name"], $browser_name, "applies {$browser_name} as browser name");
+            } else {
+                $browser_name = $body["tags"]["browser.name"];
+                $browser_version = $body["tags"]["browser.{$browser_name}"];
+                $browser_os = $body["tags"]["browser.os"];
+
+                eq(
+                    "{$browser_name}/{$browser_version}/{$browser_os}",
+                    $expected_name,
+                    "applies browser name, version and OS as tags"
+                );
+            }
         }
     }
 );
