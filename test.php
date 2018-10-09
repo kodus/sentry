@@ -234,6 +234,8 @@ test(
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
+        preg_match("#^\d+(\.\d+){2}#", PHP_VERSION, $version);
+
         eq(
             $body["contexts"],
             [
@@ -244,7 +246,7 @@ test(
                 ],
                 "runtime" => [
                     "name"            => "php",
-                    "version"         => PHP_VERSION,
+                    "version"         => $version[0],
                     "raw_description" => phpversion(),
                 ],
             ],

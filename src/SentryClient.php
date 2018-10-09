@@ -610,11 +610,13 @@ class SentryClient
      */
     private function createRuntimeContext(): RuntimeContext
     {
-        return new RuntimeContext(
-            "php",       // name
-            PHP_VERSION, // version
-            phpversion() // raw description
-        );
+        $name = "php";
+
+        $raw_description = PHP_VERSION;
+
+        preg_match("#^\d+(\.\d+){2}#", $raw_description, $version);
+
+        return new RuntimeContext($name, $version[0], $raw_description);
     }
 
     /**
@@ -624,11 +626,11 @@ class SentryClient
      */
     private function createOSContext(): OSContext
     {
-        return new OSContext(
-            php_uname("s"), // name
-            php_uname("v"), // version
-            php_uname("r")  // build
-        );
+        $name = php_uname("s");
+        $version = php_uname("v");
+        $build = php_uname("r");
+
+        return new OSContext($name, $version, $build);
     }
 
     /**
