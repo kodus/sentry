@@ -4,13 +4,26 @@ namespace Kodus\Sentry;
 
 class RuntimeContext implements Context
 {
+    /**
+     * @var string
+     */
     public $name;
+
+    /**
+     * @var string
+     */
     public $version;
 
-    public function __construct()
+    /**
+     * @var string
+     */
+    public $raw_description;
+
+    public function __construct(string $name, string $version, string $raw_description)
     {
-        $this->name = "php";
-        $this->version = phpversion();
+        $this->name = $name;
+        $this->version = $version;
+        $this->raw_description = $raw_description;
     }
 
     public function getType(): string

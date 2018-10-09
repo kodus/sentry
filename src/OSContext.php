@@ -4,15 +4,26 @@ namespace Kodus\Sentry;
 
 class OSContext implements Context
 {
+    /**
+     * @var string
+     */
     public $name;
+
+    /**
+     * @var string
+     */
     public $version;
+
+    /**
+     * @var string
+     */
     public $build;
 
-    public function __construct()
+    public function __construct(string $name, string $version, string $build)
     {
-        $this->name = php_uname("s");
-        $this->version = php_uname("v");
-        $this->build = php_uname("r");
+        $this->name = $name;
+        $this->version = $version;
+        $this->build = $build;
     }
 
     public function getType(): string

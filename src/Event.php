@@ -4,6 +4,9 @@ namespace Kodus\Sentry;
 
 use JsonSerializable;
 
+/**
+ * @link https://docs.sentry.io/clientdev/attributes/
+ */
 class Event implements JsonSerializable
 {
     /**
@@ -14,12 +17,12 @@ class Event implements JsonSerializable
     const DATE_FORMAT = "Y-m-d\TH:i:s";
 
     /**
-     * @var string
+     * @var string auto-generated UUID v4 (without dashes, as required by Sentry)
      */
     public $event_id;
 
     /**
-     * @var string
+     * @var string severity level of this Event
      *
      * @see EventLevel
      */
@@ -31,7 +34,7 @@ class Event implements JsonSerializable
     public $timestamp;
 
     /**
-     * @var string
+     * @var string human-readable message
      */
     public $message;
 
@@ -67,12 +70,23 @@ class Event implements JsonSerializable
         $this->message = $message;
     }
 
-    public function addContext(Context $context)
+    /**
+     * Add/replace a given {@see Context} instance.
+     *
+     * @param Context $context
+     */
+    public function setContext(Context $context)
     {
         $this->contexts[$context->getType()] = $context;
     }
 
-    public function addTag(string $name, string $value)
+    /**
+     * Add/replace a given "tag" name/value pair
+     *
+     * @param string $name
+     * @param string $value
+     */
+    public function setTag(string $name, string $value)
     {
         $this->tags[$name] = $value;
     }

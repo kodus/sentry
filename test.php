@@ -172,11 +172,7 @@ test(
     function () {
         $client = new MockSentryClient();
 
-        $unknown = fopen(__FILE__, "r");
-
-        fclose($unknown); // closed file resources become "unknown types" in php
-
-        $file = fopen(__FILE__, "r"); // open file resources are should be recognized as "stream" types
+        $file = fopen("php://temp", "rw+"); // open file resources are should be recognized as "stream" types
 
         eq($client->testFormat([1, 2, 3]), "array[3]");
         eq($client->testFormat(['foo' => 'bar', 'baz' => 'bat']), 'array[2]');
@@ -190,14 +186,16 @@ test(
         eq($client->testFormat("hell\"o"), '"hell\"o"');
         eq($client->testFormat(new \stdClass()), '{object}');
         eq($client->testFormat(new ClassFixture()), '{' . ClassFixture::class . '}');
-        eq($client->testFormat($file), '{stream}');
         eq($client->testFormat([new ClassFixture(), 'instanceMethod']), '{' . ClassFixture::class . '}->instanceMethod()');
         eq($client->testFormat(['ClassFixture', 'staticMethod']), ClassFixture::class . '::staticMethod()');
         eq($client->testFormat(empty_closure()), '{Closure in ' . __FILE__ . '(65)}');
         eq($client->testFormat(new InvokableClassFixture()), '{' . InvokableClassFixture::class . '}');
-        eq($client->testFormat($unknown), '{unknown type}');
+
+        eq($client->testFormat($file), '{stream}', "reports open streams as '{stream}'");
 
         fclose($file);
+
+        eq($client->testFormat($file), '{unknown type}', "reports closed streams as '{unknown type}'");
     }
 );
 
@@ -235,6 +233,23 @@ test(
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
+
+        eq(
+            $body["contexts"],
+            [
+                "os"      => [
+                    "name"    => php_uname("s"),
+                    "version" => php_uname("v"),
+                    "build"   => php_uname("r"),
+                ],
+                "runtime" => [
+                    "name"            => "php",
+                    "version"         => PHP_VERSION,
+                    "raw_description" => phpversion(),
+                ],
+            ],
+            "defines basic OS and PHP run-time contexts"
+        );
 
         eq(count($body["exception"]["values"]), 2, "can capture nested Exceptions");
 
@@ -333,19 +348,5 @@ test(
 //        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 );
-
-//$client = new SentryClient("https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571");
-//
-//$request = new ServerRequest(
-//    "POST",
-//    "https://example.com/hello",
-//    [
-//        "Content-Type" => "application/json",
-//        "User-Agent" => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
-//    ],
-//    '{"foo":"bar"}'
-//);
-//
-//$client->captureException(exception_with("ouch"), $request);
 
 exit(run());

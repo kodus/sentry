@@ -15,12 +15,7 @@ use Throwable;
 class SentryClient
 {
     /**
-     * @var string Sentry API endpoint
-     */
-    private $url;
-
-    /**
-     * @var string[] map where PHP error-level => Sentry error-level
+     * @var string[] map where PHP error-level => Sentry Event error-level
      *
      * @link http://php.net/manual/en/errorfunc.constants.php
      *
@@ -43,6 +38,11 @@ class SentryClient
         E_USER_NOTICE       => EventLevel::INFO,
         E_STRICT            => EventLevel::INFO,
     ];
+
+    /**
+     * @var string Sentry API endpoint
+     */
+    private $url;
 
     /**
      * @var string X-Sentry authentication header template
@@ -87,9 +87,9 @@ class SentryClient
 
         $this->url = "{$url['scheme']}://{$url['host']}/api{$url['path']}/store/";
 
-        $this->os = new OSContext();
+        $this->runtime = $this->createRuntimeContext();
 
-        $this->runtime = new RuntimeContext();
+        $this->os = $this->createOSContext();
     }
 
     /**
@@ -110,11 +110,11 @@ class SentryClient
 
         $event->exception = $this->createExceptionList($exception);
 
-        $event->addContext($this->os);
+        $event->setContext($this->os);
 
-        $event->addContext($this->runtime);
+        $event->setContext($this->runtime);
 
-        $event->addTag("server_name", php_uname('n'));
+        $event->setTag("server_name", php_uname('n'));
 
         if ($request) {
             $this->addRequestDetails($event, $request);
@@ -178,7 +178,7 @@ class SentryClient
      */
     protected function addRequestDetails(Event $event, ServerRequestInterface $request)
     {
-        $event->addTag("site", $request->getUri()->getHost());
+        $event->setTag("site", $request->getUri()->getHost());
 
         $event->request = new Request($request->getUri()->__toString(), $request->getMethod());
 
@@ -479,6 +479,9 @@ class SentryClient
             case "resource":
                 return "{" . get_resource_type($value) . "}";
 
+            case "resource (closed)":
+                return "{unknown type}";
+
             case "callable":
                 return is_object($value[0])
                     ? '{' . get_class($value[0]) . "}->{$value[1]}()"
@@ -532,5 +535,33 @@ class SentryClient
         }
 
         return $response;
+    }
+
+    /**
+     * Create run-time context information about this PHP installation.
+     *
+     * @return RuntimeContext
+     */
+    private function createRuntimeContext(): RuntimeContext
+    {
+        return new RuntimeContext(
+            "php",       // name
+            PHP_VERSION, // version
+            phpversion() // raw description
+        );
+    }
+
+    /**
+     * Create the OS context information about this Operating System.
+     *
+     * @return OSContext
+     */
+    private function createOSContext(): OSContext
+    {
+        return new OSContext(
+            php_uname("s"), // name
+            php_uname("v"), // version
+            php_uname("r")  // build
+        );
     }
 }
