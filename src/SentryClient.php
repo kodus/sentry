@@ -40,6 +40,68 @@ class SentryClient
     ];
 
     /**
+     * @var string[] map where regular expression pattern => browser name
+     */
+    public $browser_patterns = [
+        "/AOLShield\/([0-9\._]+)/"                           => "aol",
+        "/Edge\/([0-9\._]+)/"                                => "edge",
+        "/YaBrowser\/([0-9\._]+)/"                           => "yandexbrowser",
+        "/Vivaldi\/([0-9\.]+)/"                              => "vivaldi",
+        "/KAKAOTALK\s([0-9\.]+)/"                            => "kakaotalk",
+        "/SamsungBrowser\/([0-9\.]+)/"                       => "samsung",
+        "/(?!Chrom.*OPR)Chrom(?:e|ium)\/([0-9\.]+)(:?\s|$)/" => "chrome",
+        "/PhantomJS\/([0-9\.]+)(:?\s|$)/"                    => "phantomjs",
+        "/CriOS\/([0-9\.]+)(:?\s|$)/"                        => "crios",
+        "/Firefox\/([0-9\.]+)(?:\s|$)/"                      => "firefox",
+        "/FxiOS\/([0-9\.]+)/"                                => "fxios",
+        "/Opera\/([0-9\.]+)(?:\s|$)/"                        => "opera",
+        "/OPR\/([0-9\.]+)(:?\s|$)$/"                         => "opera",
+        "/Trident\/7\.0.*rv\:([0-9\.]+).*\).*Gecko$/"        => "ie",
+        "/MSIE\s([0-9\.]+);.*Trident\/[4-7].0/"              => "ie",
+        "/MSIE\s(7\.0)/"                                     => "ie",
+        "/BB10;\sTouch.*Version\/([0-9\.]+)/"                => "bb10",
+        "/Android\s([0-9\.]+)/"                              => "android",
+        "/Version\/([0-9\._]+).*Mobile.*Safari.*/"           => "ios",
+        "/Version\/([0-9\._]+).*Safari/"                     => "safari",
+        "/FBAV\/([0-9\.]+)/"                                 => "facebook",
+        "/Instagram\s([0-9\.]+)/"                            => "instagram",
+        "/AppleWebKit\/([0-9\.]+).*Mobile/"                  => "ios-webview",
+
+        "/(nuhk)|(Googlebot)|(Yammybot)|(Openbot)|(Slurp)|(MSNBot)|(Ask Jeeves\/Teoma)|(ia_archiver)/"                                   => "bot",
+        "/alexa|bot|crawl(er|ing)|facebookexternalhit|feedburner|google web preview|nagios|postrank|pingdom|slurp|spider|yahoo!|yandex/" => "bot",
+    ];
+
+    /**
+     * @var string[] map where regular expression pattern => OS name
+     */
+    public $os_patterns = [
+        "/iP(hone|od|ad)/"                    => "iOS",
+        "/Android/"                           => "Android OS",
+        "/BlackBerry|BB10/"                   => "BlackBerry OS",
+        "/IEMobile/"                          => "Windows Mobile",
+        "/Kindle/"                            => "Amazon OS",
+        "/Win16/"                             => "Windows 3.11",
+        "/(Windows 95)|(Win95)|(Windows_95)/" => "Windows 95",
+        "/(Windows 98)|(Win98)/"              => "Windows 98",
+        "/(Windows NT 5.0)|(Windows 2000)/"   => "Windows 2000",
+        "/(Windows NT 5.1)|(Windows XP)/"     => "Windows XP",
+        "/(Windows NT 5.2)/"                  => "Windows Server 2003",
+        "/(Windows NT 6.0)/"                  => "Windows Vista",
+        "/(Windows NT 6.1)/"                  => "Windows 7",
+        "/(Windows NT 6.2)/"                  => "Windows 8",
+        "/(Windows NT 6.3)/"                  => "Windows 8.1",
+        "/(Windows NT 10.0)/"                 => "Windows 10",
+        "/Windows ME/"                        => "Windows ME",
+        "/OpenBSD/"                           => "Open BSD",
+        "/SunOS/"                             => "Sun OS",
+        "/(Linux)|(X11)/"                     => "Linux",
+        "/(Mac_PowerPC)|(Macintosh)/"         => "Mac OS",
+        "/QNX/"                               => "QNX",
+        "/BeOS/"                              => "BeOS",
+        "/OS\/2/"                             => "OS/2",
+    ];
+
+    /**
      * @var string Sentry API endpoint
      */
     private $url;
@@ -195,7 +257,7 @@ class SentryClient
         $event->request->headers = $headers;
 
         if ($request->hasHeader("User-Agent")) {
-            $event->setContext(new BrowserContext(null, $request->getHeaderLine("User-Agent")));
+            $event->setContext($this->createBrowserContext($request->getHeaderLine("User-Agent")));
         }
 
         // TODO populate $data with post-data (in whatever format is given)
@@ -567,5 +629,45 @@ class SentryClient
             php_uname("v"), // version
             php_uname("r")  // build
         );
+    }
+
+    /**
+     * Create the Browser context information based on the `User-Agent` string.
+     *
+     * @link https://github.com/DamonOehlman/detect-browser
+     *
+     * @param ServerRequestInterface $request
+     *
+     * @return BrowserContext
+     */
+    private function createBrowserContext(string $user_agent): BrowserContext
+    {
+        $name = "unknown";
+
+        foreach ($this->browser_patterns as $pattern => $browser) {
+            if (preg_match($pattern, $user_agent, $browser_matches) === 1) {
+                $name = $browser;
+
+                break;
+            }
+        }
+
+        if ($name !== "bot" && isset($browser_matches[1])) {
+            $version = implode(".", preg_split('/[._]/', $browser_matches[1]));
+
+            $name = "{$name}/{$version}";
+        }
+
+        if ($name !== "unknown" && $name !== "bot") {
+            foreach ($this->os_patterns as $pattern => $os) {
+                if (preg_match($pattern, $user_agent) === 1) {
+                    $name = "{$name}/{$os}";
+
+                    break;
+                }
+            }
+        }
+
+        return new BrowserContext($name, $user_agent);
     }
 }
