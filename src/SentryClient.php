@@ -194,6 +194,10 @@ class SentryClient
 
         $event->request->headers = $headers;
 
+        if ($request->hasHeader("User-Agent")) {
+            $event->setContext(new BrowserContext(null, $request->getHeaderLine("User-Agent")));
+        }
+
         // TODO populate $data with post-data (in whatever format is given)
         // TODO populate $env ?
     }

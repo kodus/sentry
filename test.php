@@ -319,10 +319,15 @@ test(
     function () {
         $client = new MockSentryClient();
 
+        $USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36";
+
         $request = new ServerRequest(
             "POST",
             "https://example.com/hello",
-            ["Content-Type" => "application/json"],
+            [
+                "Content-Type" => "application/json",
+                "User-Agent" => $USER_AGENT_STRING,
+            ],
             '{"foo":"bar"}'
         );
 
@@ -333,6 +338,14 @@ test(
         eq($body["tags"]["site"], "example.com", "can capture domain-name (site) from Request");
 
         eq(
+            $body["contexts"]["browser"],
+            [
+                "version" => $USER_AGENT_STRING,
+            ],
+            "can capture browser context"
+        );
+
+        eq(
             $body["request"],
             [
                 "url" => "https://example.com/hello",
@@ -340,6 +353,7 @@ test(
                 "headers" => [
                     "Host"         => "example.com",
                     "Content-Type" => "application/json",
+                    "User-Agent" => $USER_AGENT_STRING,
                 ],
             ],
             "can capture Request information"
