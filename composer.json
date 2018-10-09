@@ -1,6 +1,8 @@
 {
     "name": "kodus/sentry",
+    "description": "Lightweight alternative to the official Sentry client for PHP",
     "type": "library",
+    "license": "MIT",
     "authors": [
         {
             "name": "Rasmus Schultz",
