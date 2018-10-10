@@ -10,9 +10,14 @@ use JsonSerializable;
 class StackFrame implements JsonSerializable
 {
     /**
-     * @var string|null project-relative file-name/path
+     * @var string|null relative (to project root) path/filename
      */
     public $filename;
+
+    /**
+     * @var string|null absolute path/filename
+     */
+    public $abs_path;
 
     /**
      * @var string|null

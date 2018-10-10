@@ -101,7 +101,7 @@ class MockSentryClient extends SentryClient
 
     public function __construct()
     {
-        parent::__construct(self::DSN);
+        parent::__construct(self::DSN, __DIR__);
     }
 
     /**
@@ -270,12 +270,14 @@ test(
 
         $inner_frames = array_slice($inner["stacktrace"]["frames"], -4);
 
-        eq($inner_frames[0]["filename"], __FILE__, "can capture filename");
+        $expected_filename = substr(__FILE__, strlen(__DIR__) + 1);
+
+        eq($inner_frames[0]["filename"], $expected_filename, "can capture filename");
 
         eq($inner_frames[0]["function"], TraceFixture::class . "->outer", "can capture function-references");
         eq($inner_frames[1]["function"], TraceFixture::class . "->inner");
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
-        eq($inner_frames[3]["filename"], __FILE__, "call site does not specify a function");
+        eq($inner_frames[3]["filename"], $expected_filename, "call site does not specify a function");
 
         eq($inner_frames[0]["lineno"], 37, "can capture line-numbers");
         eq($inner_frames[1]["lineno"], 17);
@@ -362,7 +364,7 @@ test(
             "can capture Request information"
         );
 
-//        (new SentryClient(MockSentryClient::DSN))->captureException(new RuntimeException("boom"), $request);
+//        (new SentryClient(MockSentryClient::DSN, __DIR__))->captureException(new RuntimeException("boom"), $request);
 
 //        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
