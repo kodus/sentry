@@ -237,6 +237,8 @@ test(
 
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
+        eq($body["transaction"], __FILE__ . "#19", "can capture 'transaction' (filename and line-number)");
+
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
         preg_match("#^\d+(\.\d+){2}#", PHP_VERSION, $version);

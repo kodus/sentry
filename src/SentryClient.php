@@ -184,6 +184,14 @@ class SentryClient
 
         $event = new Event($event_id, $timestamp, $exception->getMessage());
 
+        // NOTE: the `transaction` field is actually not intended for the *source* of the error, but for
+        //       something that describes the command that resulted in the error - something application
+        //       dependent, like the web-route or console-command that triggered the problem. Since those
+        //       things can't be established from here, and since we want something meaningful to display
+        //       in the title of the Sentry error-page, this is the best we can do for now.
+
+        $event->transaction = $exception->getFile() . "#" . $exception->getLine();
+
         $event->exception = $this->createExceptionList($exception);
 
         $event->addContext($this->os);
