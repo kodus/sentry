@@ -355,7 +355,7 @@ test(
 
 //        (new SentryClient(MockSentryClient::DSN))->captureException(new RuntimeException("boom"), $request);
 
-//        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 );
 
@@ -395,13 +395,13 @@ test(
             "User-Agent: Mozilla/5.0 (iPad; U; CPU OS 4_3_2 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Mobile"                                                                                                                                                => "ios-webview/533.17.9/iOS",
             "Mozilla/5.0 (iPad; CPU OS 11_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E216"                                                                                                                                                                => "ios-webview/605.1.15/iOS",
             "Mozilla/5.0 (Linux; Android 5.0.2; SAMSUNG SM-G925F Build/LRX22G) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/4.0 Chrome/44.0.2403.133 Mobile Safari/537.36"                                                                                               => "samsung/4.0/Android OS",
-            "Mozilla/5.0 (compatible; AhrefsBot/5.2; +http://ahrefs.com/robot/)"                                                                                                                                                                                                  => "bot",
-            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; +http://www.google.com/bot.html) Safari/537.36"                                                                                                                                        => "bot",
-            "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)"                                                                                                                                                                                                    => "bot",
+            "Mozilla/5.0 (compatible; AhrefsBot/5.2; +http://ahrefs.com/robot/)"                                                                                                                                                                                                  => "bot/ahrefsbot",
+            "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Googlebot/2.1; +http://www.google.com/bot.html) Safari/537.36"                                                                                                                                        => "bot/googlebot",
+            "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)"                                                                                                                                                                                                    => "bot/yandex",
             "Snagglepuss"                                                                                                                                                                                                                                                         => "unknown",
         ];
 
-        foreach ($user_agents as $user_agent => $expected_name) {
+        foreach ($user_agents as $user_agent => $expected_version) {
             $client = new MockSentryClient();
 
             $request = new ServerRequest(
@@ -420,24 +420,31 @@ test(
             eq(
                 $body["contexts"]["browser"],
                 [
-                    "name" => $expected_name,
-                    "version" => $user_agent,
+                    "name" => explode("/", $expected_version)[0],
+                    "version" => $expected_version === "unknown"
+                        ? $user_agent // unknown agents get the User-Agent string as "version"
+                        : $expected_version, // all known agents as defined in the expectation list above
                 ],
-                "can capture browser context for: {$expected_name}"
+                "can capture browser context for: {$user_agent}"
             );
 
             $browser_name = $body["contexts"]["browser"]["name"];
 
-            if ($browser_name === "bot" || $browser_name === "unknown") {
-                eq($body["tags"]["browser.name"], $browser_name, "applies {$browser_name} as browser name");
-            } else {
-                $browser_name = $body["tags"]["browser.name"];
+            if ($browser_name === "bot") {
+                $browser_version = $body["tags"]["browser.bot"];
+
+                eq(
+                    "{$browser_name}/{$browser_version}",
+                    $expected_version,
+                    "applies browser name ('bot') and version (bot name) as tags"
+                );
+            } else if ($browser_name !== "unknown") {
                 $browser_version = $body["tags"]["browser.{$browser_name}"];
                 $browser_os = $body["tags"]["browser.os"];
 
                 eq(
                     "{$browser_name}/{$browser_version}/{$browser_os}",
-                    $expected_name,
+                    $expected_version,
                     "applies browser name, version and OS as tags"
                 );
             }

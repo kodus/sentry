@@ -67,8 +67,7 @@ class SentryClient
         "/Instagram\s([0-9\.]+)/"                            => "instagram",
         "/AppleWebKit\/([0-9\.]+).*Mobile/"                  => "ios-webview",
 
-        "/(nuhk)|(Googlebot)|(Yammybot)|(Openbot)|(Slurp)|(MSNBot)|(Ask Jeeves\/Teoma)|(ia_archiver)/"                                   => "bot",
-        "/alexa|bot|crawl(er|ing)|facebookexternalhit|feedburner|google web preview|nagios|postrank|pingdom|slurp|spider|yahoo!|yandex/" => "bot",
+        "/(nuhk|slurp|ask jeeves\/teoma|ia_archiver|alexa|crawl|crawler|crawling|facebookexternalhit|feedburner|google web preview|nagios|postrank|pingdom|slurp|spider|yahoo!|yandex|\w+bot)/i" => "bot",
     ];
 
     /**
@@ -643,38 +642,40 @@ class SentryClient
      */
     private function applyBrowserContext(Event $event, string $user_agent)
     {
-        $name = "unknown";
+        $browser_name = "unknown";
 
-        foreach ($this->browser_patterns as $pattern => $browser) {
+        foreach ($this->browser_patterns as $pattern => $name) {
             if (preg_match($pattern, $user_agent, $browser_matches) === 1) {
-                $name = $browser;
+                $browser_name = $name;
 
                 break;
             }
         }
 
-        $event->addTag("browser.name", $name);
+        $browser_version = $browser_name;
 
-        if ($name !== "bot" && isset($browser_matches[1])) {
-            $version = implode(".", preg_split('/[._]/', $browser_matches[1]));
+        if (isset($browser_matches[1])) {
+            $version = strtolower(implode(".", preg_split('/[._]/', $browser_matches[1])));
 
-            $event->addTag("browser.{$name}", $version);
+            $event->addTag("browser.{$browser_name}", $version);
 
-            $name = "{$name}/{$version}";
+            $browser_version = "{$browser_version}/{$version}";
         }
 
-        if ($name !== "unknown" && $name !== "bot") {
+        if ($browser_version === "unknown") {
+            $browser_version = $user_agent; // TODO maybe fall back on a User-Agent hash for brevity?
+        } else if ($browser_version !== "bot") {
             foreach ($this->os_patterns as $pattern => $os) {
                 if (preg_match($pattern, $user_agent) === 1) {
                     $event->addTag("browser.os", $os);
 
-                    $name = "{$name}/{$os}";
+                    $browser_version = "{$browser_version}/{$os}";
 
                     break;
                 }
             }
         }
 
-        $event->addContext(new BrowserContext($name, $user_agent));
+        $event->addContext(new BrowserContext($browser_name, $browser_version));
     }
 }
