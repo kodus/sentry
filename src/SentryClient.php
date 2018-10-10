@@ -154,14 +154,29 @@ class SentryClient
     }
 
     /**
-     * Capture details about a given {@see Throwable} and (optionally) an associated {@see ServerRequestInterface}.
+     * Create and capture details about a given {@see Throwable} and (optionally) an
+     * associated {@see ServerRequestInterface}.
      *
      * @param Throwable                   $exception the Exception to be logged
-     * @param ServerRequestInterface|null $request   the PSR-7 Request (if applicable)
-     *
-     * @return string captured Event ID
+     * @param ServerRequestInterface|null $request   the related PSR-7 Request (if applicable)
      */
-    public function captureException(Throwable $exception, ?ServerRequestInterface $request = null): string
+    public function captureException(Throwable $exception, ?ServerRequestInterface $request = null): void
+    {
+        $event = $this->createEvent($exception, $request);
+
+        $this->captureEvent($event);
+    }
+
+    /**
+     * Create an {@see Event} instance with details about a given {@see Throwable} and
+     * (optionally) an associated {@see ServerRequestInterface}.
+     *
+     * @param Throwable                   $exception the Exception to be logged
+     * @param ServerRequestInterface|null $request   the related PSR-7 Request (if applicable)
+     *
+     * @return Event
+     */
+    public function createEvent(Throwable $exception, ?ServerRequestInterface $request = null): Event
     {
         $timestamp = $this->createTimestamp();
 
@@ -181,17 +196,29 @@ class SentryClient
             $this->addRequestDetails($event, $request);
         }
 
+        return $event;
+    }
+
+    /**
+     * Capture (HTTP `POST`) a given Event to Sentry.
+     *
+     * @param Event $event
+     */
+    public function captureEvent(Event $event): void
+    {
         $body = json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $headers = [
             "Accept: application/json",
             "Content-Type: application/json",
-            $this->createAuthHeader($timestamp),
+            $this->createAuthHeader($event->timestamp),
         ];
 
         $response = $this->fetch("POST", $this->url, $body, $headers);
 
-        return $response;
+        $data = json_decode($response, true);
+
+        $event->event_id = $data["id"];
     }
 
     /**

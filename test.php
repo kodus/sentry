@@ -126,6 +126,11 @@ class MockSentryClient extends SentryClient
         return "";
     }
 
+    public function captureEvent(Event $event): void
+    {
+        parent::captureEvent($event);
+    }
+
     public function testFetch(string $method, string $url, string $body, array $headers): string
     {
         return parent::fetch($method, $url, $body, $headers);
@@ -355,7 +360,7 @@ test(
 
 //        (new SentryClient(MockSentryClient::DSN))->captureException(new RuntimeException("boom"), $request);
 
-        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+//        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 );
 

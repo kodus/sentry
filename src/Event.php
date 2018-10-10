@@ -29,7 +29,7 @@ class Event implements JsonSerializable
     public $level = EventLevel::ERROR;
 
     /**
-     * @var string ISO 8601 timestamp
+     * @var int timestamp
      */
     public $timestamp;
 
@@ -66,7 +66,7 @@ class Event implements JsonSerializable
     public function __construct(string $event_id, int $timestamp, string $message)
     {
         $this->event_id = $event_id;
-        $this->timestamp = gmdate(self::DATE_FORMAT, $timestamp);
+        $this->timestamp = $timestamp;
         $this->message = $message;
     }
 
@@ -96,6 +96,10 @@ class Event implements JsonSerializable
      */
     public function jsonSerialize()
     {
-        return array_filter(get_object_vars($this));
+        $data = array_filter(get_object_vars($this));
+
+        $data["timestamp"] = gmdate(self::DATE_FORMAT, $this->timestamp);
+
+        return $data;
     }
 }
