@@ -39,6 +39,15 @@ class Event implements JsonSerializable
     public $message;
 
     /**
+     * The name of the transaction which caused this exception.
+     *
+     * For example, in a web app, this might be the route name: `/welcome`
+     *
+     * @var string|null
+     */
+    public $transaction;
+
+    /**
      * @var string platform name
      */
     public $platform = "php";
