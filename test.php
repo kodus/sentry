@@ -266,17 +266,19 @@ test(
 
         eq($inner["value"], "from inner: ouch", "can capture exception value (message)");
 
-        $inner_frames = array_slice($inner["stacktrace"]["frames"], -3);
+        $inner_frames = array_slice($inner["stacktrace"]["frames"], -4);
 
         eq($inner_frames[0]["filename"], __FILE__, "can capture filename");
 
         eq($inner_frames[0]["function"], TraceFixture::class . "->outer", "can capture function-references");
         eq($inner_frames[1]["function"], TraceFixture::class . "->inner");
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
+        eq($inner_frames[3]["filename"], __FILE__, "call site does not specify a function");
 
         eq($inner_frames[0]["lineno"], 37, "can capture line-numbers");
         eq($inner_frames[1]["lineno"], 17);
         eq($inner_frames[2]["lineno"], 29);
+        eq($inner_frames[3]["lineno"], 26, "can capture line-number of failed call-site");
 
         eq(
             $inner_frames[0]["context_line"],
@@ -312,7 +314,7 @@ test(
 
         $outer = $body["exception"]["values"][1];
 
-        $outer_frames = array_slice($outer["stacktrace"]["frames"], -2);
+        $outer_frames = array_slice($outer["stacktrace"]["frames"], -3);
 
         eq($outer_frames[0]["function"], "exception_with", "can capture stack-trace of inner Exception");
         eq($outer_frames[1]["function"], TraceFixture::class . "->outer");

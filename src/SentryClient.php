@@ -319,10 +319,20 @@ class SentryClient
      */
     protected function createExceptionInfo(Throwable $exception): ExceptionInfo
     {
+        $trace = $exception->getTrace();
+
+        array_unshift(
+            $trace,
+            [
+                "file" => $exception->getFile(),
+                "line" => $exception->getLine(),
+            ]
+        );
+
         return new ExceptionInfo(
             get_class($exception),
             $exception->getMessage(),
-            $this->createStackTrace($exception->getTrace())
+            $this->createStackTrace($trace)
         );
     }
 

@@ -10,12 +10,12 @@ use JsonSerializable;
 class StackFrame implements JsonSerializable
 {
     /**
-     * @var string project-relative file-name/path
+     * @var string|null project-relative file-name/path
      */
     public $filename;
 
     /**
-     * @var string
+     * @var string|null
      */
     public $function;
 
@@ -45,8 +45,8 @@ class StackFrame implements JsonSerializable
     public $vars = [];
 
     public function __construct(
-        string $filename,
-        string $function,
+        ?string $filename,
+        ?string $function,
         ?int $lineno
     ) {
         $this->filename = $filename;
