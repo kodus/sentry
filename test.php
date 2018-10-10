@@ -408,7 +408,7 @@ test(
             "Snagglepuss"                                                                                                                                                                                                                                                         => "unknown",
         ];
 
-        foreach ($user_agents as $user_agent => $expected_version) {
+        foreach ($user_agents as $user_agent => $expected) {
             $client = new MockSentryClient();
 
             $request = new ServerRequest(
@@ -424,35 +424,26 @@ test(
 
             $body = json_decode($client->requests[0]->body, true);
 
-            eq(
-                $body["contexts"]["browser"],
-                [
-                    "name" => explode("/", $expected_version)[0],
-                    "version" => $expected_version === "unknown"
-                        ? $user_agent // unknown agents get the User-Agent string as "version"
-                        : $expected_version, // all known agents as defined in the expectation list above
-                ],
-                "can capture browser context for: {$user_agent}"
-            );
+            @list($expected_browser, $expected_version, $expected_os) = explode("/", $expected);
 
-            $browser_name = $body["contexts"]["browser"]["name"];
-
-            if ($browser_name === "bot") {
-                $browser_version = $body["tags"]["browser.bot"];
-
+            if ($expected_browser === "bot") {
                 eq(
-                    "{$browser_name}/{$browser_version}",
-                    $expected_version,
-                    "applies browser name ('bot') and version (bot name) as tags"
+                    $body["contexts"]["browser"],
+                    [
+                        "name" => "{$expected_browser}/{$expected_version}"
+                    ],
+                    "can capture bot name for: {$user_agent}"
                 );
-            } else if ($browser_name !== "unknown") {
-                $browser_version = $body["tags"]["browser.{$browser_name}"];
-                $browser_os = $body["tags"]["browser.os"];
-
+            } else {
                 eq(
-                    "{$browser_name}/{$browser_version}/{$browser_os}",
-                    $expected_version,
-                    "applies browser name, version and OS as tags"
+                    $body["contexts"]["browser"],
+                    [
+                        "name"    => $expected_browser,
+                        "version" => $expected_browser === "unknown"
+                            ? $user_agent // unknown agents fall back to the full User-Agent string
+                            : "{$expected_version}/{$expected_os}", // all known agents specify version/OS
+                    ],
+                    "applies browser name, version and OS for: {$user_agent}"
                 );
             }
         }

@@ -40,7 +40,7 @@ class SentryClient
     ];
 
     /**
-     * @var string[] map where regular expression pattern => browser name
+     * @var string[] map where regular expression pattern => browser name (or "bot")
      */
     public $browser_patterns = [
         "/AOLShield\/([0-9\._]+)/"                           => "aol",
@@ -689,30 +689,34 @@ class SentryClient
             }
         }
 
-        $browser_version = $browser_name;
+        $browser_version = isset($browser_matches[1])
+            ? strtolower(implode(".", preg_split('/[._]/', $browser_matches[1])))
+            : "unknown";
 
-        if (isset($browser_matches[1])) {
-            $version = strtolower(implode(".", preg_split('/[._]/', $browser_matches[1])));
+        $event->addTag("browser.{$browser_name}", $browser_version);
 
-            $event->addTag("browser.{$browser_name}", $version);
+        $browser_os = "unknown";
 
-            $browser_version = "{$browser_version}/{$version}";
-        }
-
-        if ($browser_version === "unknown") {
-            $browser_version = $user_agent; // TODO maybe fall back on a User-Agent hash for brevity?
-        } else if ($browser_version !== "bot") {
+        if ($browser_name !== "bot" && $browser_name !== "unknown") {
             foreach ($this->os_patterns as $pattern => $os) {
                 if (preg_match($pattern, $user_agent) === 1) {
-                    $event->addTag("browser.os", $os);
-
-                    $browser_version = "{$browser_version}/{$os}";
+                    $browser_os = $os;
 
                     break;
                 }
             }
         }
 
-        $event->addContext(new BrowserContext($browser_name, $browser_version));
+        $event->addTag("browser.os", $browser_os);
+
+        $context = $browser_name === "bot"
+            ? new BrowserContext("{$browser_name}/{$browser_version}", null)
+            : new BrowserContext(
+                $browser_name,
+                $browser_version === "unknown"
+                    ? $user_agent // TODO maybe fall back on a User-Agent hash for brevity?
+                    : "{$browser_version}/{$browser_os}");
+
+        $event->addContext($context);
     }
 }
