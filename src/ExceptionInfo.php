@@ -20,19 +20,15 @@ class ExceptionInfo implements JsonSerializable
     public $value;
 
     /**
-     * @var string|null
-     */
-    public $module;
-
-    /**
-     * @var StackTrace|null
+     * @var StackTrace
      */
     public $stacktrace;
 
-    public function __construct(string $type, string $value)
+    public function __construct(string $type, string $value, StackTrace $stacktrace)
     {
         $this->type = $type;
         $this->value = $value;
+        $this->stacktrace = $stacktrace;
     }
 
     /**
