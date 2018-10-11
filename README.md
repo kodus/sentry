@@ -24,9 +24,10 @@ aspects of exception/error/request-processing with simple code that modifies the
 Most of the useful features of the official client - plus some useful extras.
 
   * Detailed stack-traces with source-code context, paths/filenames, line-numbers.
-  * Reports PHP and OS versions, server name, site name, etc.
   * Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
-  * Severity of `ErrorException` mappings identical to the official client.
+  * Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
+  * Reports PHP and OS versions, server name, site name, etc.
+  * Severity of `ErrorException` mappings identical to the official (2.0) client.
 
 *Bring your own error-handler:* this package doesn't have one, but your framework/stack/app almost certainly
 already does, and this should be very easy to integrate just about anywhere.
@@ -37,7 +38,7 @@ TODO add examples
 
 #### Why?
 
-Openly opinionated fluff:
+*Openly opinionated fluff:*
 
 Version 1.x of the official Sentry PHP client is dated, and not a good fit for a modern (PSR-7) application stack.
 
