@@ -29,8 +29,12 @@ Most of the useful features of the official client - plus some useful extras.
   * Reports PHP and OS versions, server name, site name, etc.
   * Severity of `ErrorException` mappings identical to the official (2.0) client.
 
-*Bring your own error-handler:* this package doesn't have one, but your framework/stack/app almost certainly
-already does, and this should be very easy to integrate just about anywhere.
+Non-features:
+
+  * No built-in error-handler: your framework/stack/app probably has one, and this client should be
+    very easy to integrate just about anywhere.
+  * No post-data recording: scrubbing/sanitization is unreliable. (if you're willing to take the risk,
+    the fields are there in the model, and you can implement that easily.)
 
 ### Usage
 
@@ -49,7 +53,7 @@ Specifically:
 
   * We don't need an error-handler - every modern application stack has one already.
   * We don't want a complex architecture and custom middleware - simple functions will do.
-  * We don't need data sanitization - the Sentry server has privacy/scrubbing options on the server-side.
+  * We don't want to record post-data - there are too many risks.
   * Fewer lines of code ~> fewer bugs (hopefully; you don't want the error-logger itself to break down.)
   * No dependencies: no conflicts, no fuss.
 

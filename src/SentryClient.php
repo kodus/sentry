@@ -321,9 +321,6 @@ class SentryClient
         }
 
         $event->user->ip_address = $this->detectUserIP($request);
-
-        // TODO populate $data with post-data (in whatever format is given)
-        // TODO populate $env ?
     }
 
     /**
