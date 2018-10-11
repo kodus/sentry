@@ -15,6 +15,11 @@ use Throwable;
 class SentryClient
 {
     /**
+     * @string version of this client package
+     */
+    const VERSION = "1.0.0";
+
+    /**
      * @var string[] map where PHP error-level => Sentry Event error-level
      *
      * @link http://php.net/manual/en/errorfunc.constants.php
@@ -101,6 +106,20 @@ class SentryClient
     ];
 
     /**
+     * List of trusted header-names from which the User's IP may be obtained.
+     *
+     * @var string[] map where header-name => regular expression pattern
+     *
+     * @see addRequestDetails()
+     */
+    public $user_ip_headers = [
+        "X-Forwarded-For" => '/^([^,\s$]+)/i',  // https://en.wikipedia.org/wiki/X-Forwarded-For
+        "Forwarded"       => '/for=([^;,]+)/i', // https://tools.ietf.org/html/rfc7239
+    ];
+
+    // TODO grouping / fingerprints https://docs.sentry.io/learn/rollups/?platform=node#custom-grouping
+
+    /**
      * @var string Sentry API endpoint
      */
     private $url;
@@ -147,7 +166,7 @@ class SentryClient
                 "Sentry sentry_version=7",
                 "sentry_timestamp=%s",
                 "sentry_key={$url['user']}",
-                "sentry_client=kodus-sentry/1.0",
+                "sentry_client=kodus-sentry/" . self::VERSION,
             ]
         );
 
@@ -189,7 +208,7 @@ class SentryClient
 
         $event_id = $this->createEventID();
 
-        $event = new Event($event_id, $timestamp, $exception->getMessage());
+        $event = new Event($event_id, $timestamp, $exception->getMessage(), new UserInfo());
 
         // NOTE: the `transaction` field is actually not intended for the *source* of the error, but for
         //       something that describes the command that resulted in the error - something application
@@ -215,7 +234,7 @@ class SentryClient
     }
 
     /**
-     * Capture (HTTP `POST`) a given Event to Sentry.
+     * Capture (HTTP `POST`) a given {@see Event} to Sentry.
      *
      * @param Event $event
      */
@@ -301,8 +320,69 @@ class SentryClient
             $this->applyBrowserContext($event, $request->getHeaderLine("User-Agent"));
         }
 
+        $event->user->ip_address = $this->detectUserIP($request);
+
         // TODO populate $data with post-data (in whatever format is given)
         // TODO populate $env ?
+    }
+
+    /**
+     * Attempts to discover the client's IP address, from proxy-headers if necessary.
+     *
+     * Note that concerns about trusted proxies are ignored by this implementation - if
+     * somebody spoofs their IP, it may get logged, but that's not a security issue for
+     * this use-case, since we're reporting only.
+     *
+     * @param ServerRequestInterface $request
+     *
+     * @return string client IP address (or 'unknown')
+     */
+    protected function detectUserIP(ServerRequestInterface $request): string
+    {
+        $server = $request->getServerParams();
+
+        if (isset($server["REMOTE_ADDR"])) {
+            if ($this->isValidIP($server["REMOTE_ADDR"])) {
+                return $server["REMOTE_ADDR"]; // prioritize an IP provided by the CGI back-end
+            }
+        }
+
+        foreach ($this->user_ip_headers as $name => $pattern) {
+            if ($request->hasHeader($name)) {
+                $value = $request->getHeaderLine($name);
+
+                if (preg_match_all($pattern, $value, $matches) !== false) {
+                    foreach ($matches[1] as $match) {
+                        $ip = trim(preg_replace('/\:\d+$/', '', trim($match, '"')), '[]');
+
+                        if ($this->isValidIP($ip)) {
+                            return $ip; // return the first matching valid IP
+                        }
+                    }
+                }
+            }
+        }
+
+        return "unknown";
+    }
+
+    /**
+     * Validates a detected client IP address.
+     *
+     * @param string $ip
+     *
+     * @return bool
+     */
+    protected function isValidIP(string $ip): bool
+    {
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_IPV4            // accept IP v4
+            | FILTER_FLAG_IPV6          // accept IP v6
+            | FILTER_FLAG_NO_PRIV_RANGE // reject private IPv4 ranges
+            | FILTER_FLAG_NO_RES_RANGE  // reject reserved IPv4 ranges
+        ) !== false;
     }
 
     /**

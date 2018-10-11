@@ -220,7 +220,7 @@ test(
         $EXPECTED_HEADERS = [
             "Accept: application/json",
             "Content-Type: application/json",
-            "X-Sentry-Auth: Sentry sentry_version=7, sentry_timestamp={$TIMESTAMP}, sentry_key={$EVENT_ID}, sentry_client=kodus-sentry/1.0",
+            "X-Sentry-Auth: Sentry sentry_version=7, sentry_timestamp={$TIMESTAMP}, sentry_key={$EVENT_ID}, sentry_client=kodus-sentry/" . SentryClient::VERSION,
         ];
 
         eq($client->requests[0]->headers, $EXPECTED_HEADERS, "it submits the expected headers");
@@ -451,6 +451,61 @@ test(
                 );
             }
         }
+    }
+);
+
+function test_ip_detection(array $headers, string $expected_ip, string $why = null) {
+    $client = new MockSentryClient();
+
+    $request = new ServerRequest(
+        "GET",
+        "https://example.com/hello",
+        $headers
+    );
+
+    $client->captureException(new RuntimeException("boom"), $request);
+
+    $body = json_decode($client->requests[0]->body, true);
+
+    eq($body["user"]["ip_address"], $expected_ip, "can get IP from headers: " . json_encode($headers), $why);
+}
+
+test(
+    "can detect User IP address",
+    function () {
+        // RFC7239 and general IP validation rules:
+
+        test_ip_detection(['Forwarded' => 'for=127.0.0.1'], 'unknown',
+            "should reject loopback IP v4");
+
+        test_ip_detection(['Forwarded' => 'for=10.0.0.1'], 'unknown',
+            "rejects IP v4 in private range");
+
+        test_ip_detection(['Forwarded' => 'For="[2001:db8:cafe::17]", for="[2001:db8:cafe::18]"'], '2001:db8:cafe::17',
+            "should match the first of several valid IPs listed");
+
+        test_ip_detection(['Forwarded' => 'for=127.0.0.1, for="[2001:db8:cafe::17]"'], '2001:db8:cafe::17',
+            "should match the first valid IP with invalid IP listed before it");
+
+        test_ip_detection(['Forwarded' => 'For="[2001:db8:cafe::17]:81"'], '2001:db8:cafe::17',
+            "should strip port number from IP v6");
+
+        test_ip_detection(['Forwarded' => 'for=192.0.2.43:81, for=198.51.100.17'], '192.0.2.43',
+            "should strip port number from IP v4");
+
+        test_ip_detection(['Forwarded' => 'for=10.0.0.1;proto=http;by=203.0.113.43'], 'unknown',
+            "should ignore IPs listed with keywords other than 'for'");
+
+        test_ip_detection(['Forwarded' => 'for=flurp'], 'unknown',
+            "should reject this nonsense");
+
+        // X-Forwarded-For:
+
+        test_ip_detection(['X-Forwarded-For' => '192.168.1.3, 192.0.2.43, 192.0.2.44'], 'unknown',
+            "should match only the first listed IP address");
+
+        test_ip_detection(['X-Forwarded-For' => 'flurp'], 'unknown',
+            "should reject this nonsense");
     }
 );
 

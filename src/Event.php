@@ -68,15 +68,21 @@ class Event implements JsonSerializable
     public $request;
 
     /**
+     * @var UserInfo
+     */
+    public $user;
+
+    /**
      * @var Context[] map where Context Type => Context
      */
     protected $contexts = [];
 
-    public function __construct(string $event_id, int $timestamp, string $message)
+    public function __construct(string $event_id, int $timestamp, string $message, UserInfo $user)
     {
         $this->event_id = $event_id;
         $this->timestamp = $timestamp;
         $this->message = $message;
+        $this->user = $user;
     }
 
     /**
