@@ -52,7 +52,7 @@ class BreadcrumbLogger extends AbstractLogger
     public function log($level, $message, array $context = [])
     {
         $this->client->addBreadcrumb(
-            $message,
+            "[{$level}] {$message}",
             $this->log_levels[$level] ?? $level,
             $context
         );

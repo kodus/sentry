@@ -402,13 +402,13 @@ test(
                 [
                     "timestamp" => $client->time,
                     "level"     => Level::INFO,
-                    "message"   => "hello world",
+                    "message"   => "[info] hello world",
                     "data"      => ["foo" => "bar"],
                 ],
                 [
                     "timestamp" => $client->time,
                     "level"     => Level::WARNING,
-                    "message"   => "Danger, Mr. Robinson!",
+                    "message"   => "[warning] Danger, Mr. Robinson!",
                 ],
             ],
             "can delegate log events to breadcrumbs"

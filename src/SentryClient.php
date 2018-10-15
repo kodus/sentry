@@ -110,7 +110,7 @@ class SentryClient
      *
      * @var string[] map where header-name => regular expression pattern
      *
-     * @see addRequestDetails()
+     * @see applyRequestDetails()
      */
     public $user_ip_headers = [
         "X-Forwarded-For" => '/^([^,\s$]+)/i',  // https://en.wikipedia.org/wiki/X-Forwarded-For
@@ -207,7 +207,7 @@ class SentryClient
      *
      * @return Event
      */
-    public function createEvent(Throwable $exception, ?ServerRequestInterface $request = null): Event
+    protected function createEvent(Throwable $exception, ?ServerRequestInterface $request = null): Event
     {
         $timestamp = $this->createTimestamp();
 
@@ -234,7 +234,7 @@ class SentryClient
         $event->addTag("server_name", php_uname('n'));
 
         if ($request) {
-            $this->addRequestDetails($event, $request);
+            $this->applyRequestDetails($event, $request);
         }
 
         return $event;
@@ -245,7 +245,7 @@ class SentryClient
      *
      * @param Event $event
      */
-    public function captureEvent(Event $event): void
+    protected function captureEvent(Event $event): void
     {
         $body = json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -330,7 +330,7 @@ class SentryClient
      * @param Event                  $event
      * @param ServerRequestInterface $request
      */
-    protected function addRequestDetails(Event $event, ServerRequestInterface $request)
+    protected function applyRequestDetails(Event $event, ServerRequestInterface $request)
     {
         $event->addTag("site", $request->getUri()->getHost());
 
