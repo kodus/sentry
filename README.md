@@ -12,9 +12,12 @@ This package is an alternative to the [official PHP client](https://github.com/g
 The client is (by and large) a single class backed by a bunch of simple model objects that match the shape
 of the Sentry ingestion API end-point it gets posted to.
 
-The API deviates slightly from the recommendation - mainly by providing (optional) separation of the creation
-and capture of Sentry events, making it possible to create an `Event`, make changes/additions, and then
-capture it. No framework or abstractions, just write simple code.
+The API deviates from the [Unified API](https://docs.sentry.io/clientdev/unified-api/) recommendation - our
+goal is to log details exceptions and logged events leading up to those exceptions, with as little coupling
+and dependency on the client as possible.
+
+This client enables (optional) separation of the creation and capture of Sentry events, making it possible to
+create an `Event` and make changes/additions before it gets captured.
 
 With most members declared as `protected`, you can further extend and class and override/enhance various
 aspects of exception/error/request-processing with simple code that modifies the (fully type-hinted) model.
@@ -24,6 +27,7 @@ aspects of exception/error/request-processing with simple code that modifies the
 Most of the useful features of the official client - plus some useful extras.
 
   * Detailed stack-traces with source-code context, paths/filenames, line-numbers.
+  * Logging of "breadcrumbs" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
   * Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
   * Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
   * Reports PHP and OS versions, server name, site name, etc.

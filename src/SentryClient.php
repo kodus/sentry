@@ -27,21 +27,21 @@ class SentryClient
      * @link https://docs.sentry.io/clientdev/attributes/#optional-attributes
      */
     public $error_levels = [
-        E_DEPRECATED        => EventLevel::WARNING,
-        E_USER_DEPRECATED   => EventLevel::WARNING,
-        E_WARNING           => EventLevel::WARNING,
-        E_USER_WARNING      => EventLevel::WARNING,
-        E_RECOVERABLE_ERROR => EventLevel::WARNING,
-        E_ERROR             => EventLevel::FATAL,
-        E_PARSE             => EventLevel::FATAL,
-        E_CORE_ERROR        => EventLevel::FATAL,
-        E_CORE_WARNING      => EventLevel::FATAL,
-        E_COMPILE_ERROR     => EventLevel::FATAL,
-        E_COMPILE_WARNING   => EventLevel::FATAL,
-        E_USER_ERROR        => EventLevel::ERROR,
-        E_NOTICE            => EventLevel::INFO,
-        E_USER_NOTICE       => EventLevel::INFO,
-        E_STRICT            => EventLevel::INFO,
+        E_DEPRECATED        => Level::WARNING,
+        E_USER_DEPRECATED   => Level::WARNING,
+        E_WARNING           => Level::WARNING,
+        E_USER_WARNING      => Level::WARNING,
+        E_RECOVERABLE_ERROR => Level::WARNING,
+        E_ERROR             => Level::FATAL,
+        E_PARSE             => Level::FATAL,
+        E_CORE_ERROR        => Level::FATAL,
+        E_CORE_WARNING      => Level::FATAL,
+        E_COMPILE_ERROR     => Level::FATAL,
+        E_COMPILE_WARNING   => Level::FATAL,
+        E_USER_ERROR        => Level::ERROR,
+        E_NOTICE            => Level::INFO,
+        E_USER_NOTICE       => Level::INFO,
+        E_STRICT            => Level::INFO,
     ];
 
     /**
@@ -150,6 +150,11 @@ class SentryClient
     private $runtime;
 
     /**
+     * @var Breadcrumb[] list of Breadcrumbs being collected for the next Event
+     */
+    private $breadcrumbs = [];
+
+    /**
      * @param string      $dsn       Sentry DSN
      * @param string|null $root_path absolute project root-path (e.g. Composer root path; optional)
      */
@@ -208,7 +213,9 @@ class SentryClient
 
         $event_id = $this->createEventID();
 
-        $event = new Event($event_id, $timestamp, $exception->getMessage(), new UserInfo());
+        $event = new Event($event_id, $timestamp, $exception->getMessage(), new UserInfo(), $this->breadcrumbs);
+
+        $this->clearBreadcrumbs();
 
         // NOTE: the `transaction` field is actually not intended for the *source* of the error, but for
         //       something that describes the command that resulted in the error - something application
@@ -253,6 +260,31 @@ class SentryClient
         $data = json_decode($response, true);
 
         $event->event_id = $data["id"];
+    }
+
+    /**
+     * Adds a {@see Breadcrumb} for the next {@see Event}.
+     *
+     * Note that Breadcrumbs will collect until you call {@see createEvent()} or {@see captureException()},
+     * or explicitly clear them by calling {@see clearBreadcrumbs()}.
+     *
+     * @see Level for severity-level constants
+     *
+     * @param string $message
+     * @param string $level severity level
+     * @param array  $data  optional message context data
+     */
+    public function addBreadcrumb(string $message, string $level = Level::INFO, array $data = []): void
+    {
+        $this->breadcrumbs[] = new Breadcrumb($this->createTimestamp(), $level, $message, $data);
+    }
+
+    /**
+     * Clears any Breadcrumbs collected by {@see addBreadcrumb()}.
+     */
+    public function clearBreadcrumbs(): void
+    {
+        $this->breadcrumbs = [];
     }
 
     /**

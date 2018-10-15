@@ -24,9 +24,9 @@ class Event implements JsonSerializable
     /**
      * @var string severity level of this Event
      *
-     * @see EventLevel
+     * @see Level
      */
-    public $level = EventLevel::ERROR;
+    public $level = Level::ERROR;
 
     /**
      * @var int timestamp
@@ -77,12 +77,25 @@ class Event implements JsonSerializable
      */
     protected $contexts = [];
 
-    public function __construct(string $event_id, int $timestamp, string $message, UserInfo $user)
+    /**
+     * @var Breadcrumb[] breadcrumbs collected prior to the creation of this Event
+     */
+    protected $breadcrumbs = [];
+
+    /**
+     * @param string       $event_id
+     * @param int          $timestamp
+     * @param string       $message
+     * @param UserInfo     $user
+     * @param Breadcrumb[] $breadcrumbs
+     */
+    public function __construct(string $event_id, int $timestamp, string $message, UserInfo $user, array $breadcrumbs)
     {
         $this->event_id = $event_id;
         $this->timestamp = $timestamp;
         $this->message = $message;
         $this->user = $user;
+        $this->breadcrumbs = $breadcrumbs;
     }
 
     /**
@@ -114,6 +127,10 @@ class Event implements JsonSerializable
         $data = array_filter(get_object_vars($this));
 
         $data["timestamp"] = gmdate(self::DATE_FORMAT, $this->timestamp);
+
+        if (isset($data["breadcrumbs"])) {
+            $data["breadcrumbs"] = ["values" => $data["breadcrumbs"]];
+        }
 
         return $data;
     }

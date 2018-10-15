@@ -1,146 +1,13 @@
 <?php
 
+use Kodus\Sentry\BreadcrumbLogger;
 use Kodus\Sentry\Event;
+use Kodus\Sentry\Level;
 use Kodus\Sentry\SentryClient;
 use Nyholm\Psr7\ServerRequest;
 
 require_once __DIR__ . '/vendor/autoload.php';
-
-/**
- * This provides a fixture for stack-trace test-cases
- */
-class TraceFixture
-{
-    public function outer($arg)
-    {
-        try {
-            $this->inner($arg);
-        } catch (Exception $inner) {
-            throw new Exception("from outer: {$arg}", 0, $inner);
-        }
-    }
-
-    protected function inner($arg)
-    {
-        $closure = function () use ($arg) {
-            throw new Exception("from inner: {$arg}");
-        };
-
-        $closure();
-    }
-}
-
-function exception_with($arg): Exception {
-    $fixture = new TraceFixture();
-
-    try {
-        $fixture->outer($arg);
-    } catch (Exception $exception) {
-        return $exception;
-    }
-}
-
-class ClassFixture
-{
-    public function instanceMethod()
-    {
-        // nothing here.
-    }
-
-    public static function staticMethod()
-    {
-        // nothing here.
-    }
-}
-
-class InvokableClassFixture
-{
-    public function __invoke()
-    {
-        // nothing here.
-    }
-}
-
-function empty_closure() {
-    return function () {};
-}
-
-/**
- * This model represents an HTTP Request for testing purposes
- */
-class Request
-{
-    /**
-     * @var string
-     */
-    public $body;
-
-    /**
-     * @var string[]
-     */
-    public $headers;
-
-    /**
-     * @param string   $body
-     * @param string[] $headers
-     */
-    public function __construct(string $body, array $headers)
-    {
-        $this->body = $body;
-        $this->headers = $headers;
-    }
-}
-
-class MockSentryClient extends SentryClient
-{
-    const EVENT_ID = "a1f1cddefbd54085822f50ef14c7c9a8";
-
-    const DSN = "https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571";
-
-    public $time = 1538738714;
-
-    public function __construct()
-    {
-        parent::__construct(self::DSN, __DIR__);
-    }
-
-    /**
-     * @var Request[]
-     */
-    public $requests = [];
-
-    protected function createTimestamp(): int
-    {
-        return $this->time;
-    }
-
-    protected function createEventID(): string
-    {
-        return self::EVENT_ID;
-    }
-
-    protected function fetch(string $method, string $url, string $body, array $headers = []): string
-    {
-        $this->requests[] = new Request($body, $headers);
-
-        return "";
-    }
-
-    public function captureEvent(Event $event): void
-    {
-        parent::captureEvent($event);
-    }
-
-    public function testFetch(string $method, string $url, string $body, array $headers): string
-    {
-        return parent::fetch($method, $url, $body, $headers);
-    }
-
-    public function testFormat($value): string
-    {
-        return $this->formatValue($value);
-    }
-}
+require_once __DIR__ . '/test.fixtures.php';
 
 test(
     "can send HTTP request",
@@ -193,7 +60,7 @@ test(
         eq($client->testFormat(new ClassFixture()), '{' . ClassFixture::class . '}');
         eq($client->testFormat([new ClassFixture(), 'instanceMethod']), '{' . ClassFixture::class . '}->instanceMethod()');
         eq($client->testFormat(['ClassFixture', 'staticMethod']), ClassFixture::class . '::staticMethod()');
-        eq($client->testFormat(empty_closure()), '{Closure in ' . __FILE__ . '(65)}');
+        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(62)}');
         eq($client->testFormat(new InvokableClassFixture()), '{' . InvokableClassFixture::class . '}');
 
         eq($client->testFormat($file), '{stream}', "reports open streams as '{stream}'");
@@ -237,7 +104,7 @@ test(
 
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
-        eq($body["transaction"], __FILE__ . "#19", "can capture 'transaction' (filename and line-number)");
+        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#16", "can capture 'transaction' (filename and line-number)");
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
@@ -270,7 +137,7 @@ test(
 
         $inner_frames = array_slice($inner["stacktrace"]["frames"], -4);
 
-        $expected_filename = substr(__FILE__, strlen(__DIR__) + 1);
+        $expected_filename = "test.fixtures.php";
 
         eq($inner_frames[0]["filename"], $expected_filename, "can capture filename");
 
@@ -279,10 +146,10 @@ test(
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
         eq($inner_frames[3]["filename"], $expected_filename, "call site does not specify a function");
 
-        eq($inner_frames[0]["lineno"], 37, "can capture line-numbers");
-        eq($inner_frames[1]["lineno"], 17);
-        eq($inner_frames[2]["lineno"], 29);
-        eq($inner_frames[3]["lineno"], 26, "can capture line-number of failed call-site");
+        eq($inner_frames[0]["lineno"], 34, "can capture line-numbers");
+        eq($inner_frames[1]["lineno"], 14);
+        eq($inner_frames[2]["lineno"], 26);
+        eq($inner_frames[3]["lineno"], 23, "can capture line-number of failed call-site");
 
         eq(
             $inner_frames[0]["context_line"],
@@ -454,7 +321,7 @@ test(
     }
 );
 
-function test_ip_detection(array $headers, string $expected_ip, string $why = null) {
+function test_ip_detection(array $headers, string $expected_ip, string $why) {
     $client = new MockSentryClient();
 
     $request = new ServerRequest(
@@ -467,7 +334,7 @@ function test_ip_detection(array $headers, string $expected_ip, string $why = nu
 
     $body = json_decode($client->requests[0]->body, true);
 
-    eq($body["user"]["ip_address"], $expected_ip, "can get IP from headers: " . json_encode($headers), $why);
+    eq($body["user"]["ip_address"], $expected_ip, "{$why} - headers: " . json_encode($headers));
 }
 
 test(
@@ -506,6 +373,46 @@ test(
 
         test_ip_detection(['X-Forwarded-For' => 'flurp'], 'unknown',
             "should reject this nonsense");
+    }
+);
+
+test(
+    "can capture Breacrumbs via PSR-3 logger adapter",
+    function () {
+        $client = new MockSentryClient();
+
+        $logger = new BreadcrumbLogger($client);
+
+        $logger->info("hello world", ["foo" => "bar"]);
+
+        $logger->warning("Danger, Mr. Robinson!");
+
+        $request = new ServerRequest(
+            "GET",
+            "https://example.com/hello"
+        );
+
+        $client->captureException(new RuntimeException("boom"), $request);
+
+        $body = json_decode($client->requests[0]->body, true);
+
+        eq(
+            $body["breadcrumbs"]["values"],
+            [
+                [
+                    "timestamp" => $client->time,
+                    "level"     => Level::INFO,
+                    "message"   => "hello world",
+                    "data"      => ["foo" => "bar"],
+                ],
+                [
+                    "timestamp" => $client->time,
+                    "level"     => Level::WARNING,
+                    "message"   => "Danger, Mr. Robinson!",
+                ],
+            ],
+            "can delegate log events to breadcrumbs"
+        );
     }
 );
 
