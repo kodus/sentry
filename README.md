@@ -143,13 +143,15 @@ $logger = new BreadcrumbLogger($client);
 
 You *might* want to bootstrap this as your primary logger - maybe you only care about log-entries that
 lead to an error condition. However, it's more likely you'll want another logger to send log-events to
-a persisted log, as well as recording them as breadcrumbs - for example, the
-[`monolog/monolog`](https://packagist.org/packages/monolog/monolog) package allows you to log to
-any combination of PSR-3 and monolog-handlers, filter the log-entries, and so on.
+a persisted log, as well as recording them as breadcrumbs. (For example, you may try the
+[`monolog/monolog`](https://packagist.org/packages/monolog/monolog) package, which allows you to log to
+any combination of PSR-3 and monolog-handlers, filter the log-entries, and so on - or
+[`mouf/utils.log.psr.multi-logger`](https://github.com/thecodingmachine/utils.log.psr.multi-logger),
+if you prefer something simple.)
 
 Note that log-entries will buffer *in the client* until you capture an exception - if your
 application is a CLI script handling many requests, you will need to manually call `clearBreadcrumbs()`
-on the client instance at the start of a new request.
+on the client instance at the start/end of a request.
 
 #### Configuration
 
