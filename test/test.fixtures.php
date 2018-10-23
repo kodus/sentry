@@ -1,6 +1,6 @@
 <?php
 
-use Kodus\Sentry\Event;
+use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\SentryClient;
 
 /**

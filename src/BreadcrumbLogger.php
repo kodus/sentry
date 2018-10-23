@@ -2,6 +2,7 @@
 
 namespace Kodus\Sentry;
 
+use Kodus\Sentry\Model\Level;
 use Psr\Log\AbstractLogger;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;

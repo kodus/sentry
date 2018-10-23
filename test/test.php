@@ -1,18 +1,22 @@
 <?php
 
 use Kodus\Sentry\BreadcrumbLogger;
-use Kodus\Sentry\Event;
-use Kodus\Sentry\Level;
+use Kodus\Sentry\Model\Event;
+use Kodus\Sentry\Model\Level;
 use Kodus\Sentry\SentryClient;
 use Nyholm\Psr7\ServerRequest;
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once dirname(__DIR__) . '/vendor/autoload.php';
 require_once __DIR__ . '/test.fixtures.php';
 
 test(
     "can send HTTP request",
     function () {
-        return; // TODO
+        if (enabled("skip-slow")) {
+            ok(true, "SKIPPING SLOW TEST");
+
+            return;
+        }
 
         $client = new MockSentryClient();
 

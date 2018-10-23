@@ -3,6 +3,18 @@
 namespace Kodus\Sentry;
 
 use Closure;
+use Kodus\Sentry\Model\Breadcrumb;
+use Kodus\Sentry\Model\BrowserContext;
+use Kodus\Sentry\Model\Event;
+use Kodus\Sentry\Model\ExceptionInfo;
+use Kodus\Sentry\Model\ExceptionList;
+use Kodus\Sentry\Model\Level;
+use Kodus\Sentry\Model\OSContext;
+use Kodus\Sentry\Model\Request;
+use Kodus\Sentry\Model\RuntimeContext;
+use Kodus\Sentry\Model\StackFrame;
+use Kodus\Sentry\Model\StackTrace;
+use Kodus\Sentry\Model\UserInfo;
 use Psr\Http\Message\ServerRequestInterface;
 use ReflectionException;
 use ReflectionFunction;

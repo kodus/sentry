@@ -1,6 +1,6 @@
 <?php
 
-namespace Kodus\Sentry;
+namespace Kodus\Sentry\Model;
 
 /**
  * @see https://docs.sentry.io/clientdev/interfaces/user/

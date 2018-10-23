@@ -1,8 +1,8 @@
 <?php
 
-namespace Kodus\Sentry;
+namespace Kodus\Sentry\Model;
 
-class RuntimeContext implements Context
+class OSContext implements Context
 {
     /**
      * @var string
@@ -17,18 +17,18 @@ class RuntimeContext implements Context
     /**
      * @var string
      */
-    public $raw_description;
+    public $build;
 
-    public function __construct(string $name, string $version, string $raw_description)
+    public function __construct(string $name, string $version, string $build)
     {
         $this->name = $name;
         $this->version = $version;
-        $this->raw_description = $raw_description;
+        $this->build = $build;
     }
 
     public function getType(): string
     {
-        return "runtime";
+        return "os";
     }
 
     public function jsonSerialize()

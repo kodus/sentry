@@ -1,6 +1,6 @@
 <?php
 
-namespace Kodus\Sentry;
+namespace Kodus\Sentry\Model;
 
 /**
  * @link https://docs.sentry.io/clientdev/interfaces/exception/
