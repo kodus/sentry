@@ -4,42 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ab415a0b18eae69f665c3d69e0656b56",
+    "content-hash": "3c2c966d7f263a77afe88c1e2442b77d",
     "packages": [
-        {
-            "name": "mindplay/readable",
-            "version": "1.1.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/mindplay-dk/readable.git",
-                "reference": "9fcd950d0e1c35fe7f58346b5b596e96d27a5c78"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/mindplay-dk/readable/zipball/9fcd950d0e1c35fe7f58346b5b596e96d27a5c78",
-                "reference": "9fcd950d0e1c35fe7f58346b5b596e96d27a5c78",
-                "shasum": ""
-            },
-            "require": {
-                "php": ">=5.4"
-            },
-            "require-dev": {
-                "mindplay/testies": "dev-master",
-                "phpunit/php-code-coverage": ">=2, <4"
-            },
-            "type": "library",
-            "autoload": {
-                "classmap": [
-                    "src/"
-                ]
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "Formats PHP values as human-readable strings",
-            "time": "2017-01-09T12:43:52+00:00"
-        },
         {
             "name": "psr/http-message",
             "version": "1.0.1",
@@ -89,21 +55,68 @@
                 "response"
             ],
             "time": "2016-08-06T14:39:51+00:00"
+        },
+        {
+            "name": "psr/log",
+            "version": "1.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/log.git",
+                "reference": "4ebe3a8bf773a19edfe0a84b6585ba3d401b724d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/log/zipball/4ebe3a8bf773a19edfe0a84b6585ba3d401b724d",
+                "reference": "4ebe3a8bf773a19edfe0a84b6585ba3d401b724d",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Log\\": "Psr/Log/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for logging libraries",
+            "homepage": "https://github.com/php-fig/log",
+            "keywords": [
+                "log",
+                "psr",
+                "psr-3"
+            ],
+            "time": "2016-10-10T12:19:37+00:00"
         }
     ],
     "packages-dev": [
         {
             "name": "mindplay/testies",
-            "version": "0.3.1",
+            "version": "0.3.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mindplay-dk/testies.git",
-                "reference": "583c2078e24cb506a698f0d78bbbd5fba6323125"
+                "reference": "e82361f346cf533be12324b990f265ba4e5f29fa"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/mindplay-dk/testies/zipball/583c2078e24cb506a698f0d78bbbd5fba6323125",
-                "reference": "583c2078e24cb506a698f0d78bbbd5fba6323125",
+                "url": "https://api.github.com/repos/mindplay-dk/testies/zipball/e82361f346cf533be12324b990f265ba4e5f29fa",
+                "reference": "e82361f346cf533be12324b990f265ba4e5f29fa",
                 "shasum": ""
             },
             "require-dev": {
@@ -124,7 +137,7 @@
             },
             "notification-url": "https://packagist.org/downloads/",
             "license": [
-                "LGPL3.0+"
+                "MIT"
             ],
             "authors": [
                 {
@@ -133,7 +146,7 @@
                 }
             ],
             "description": "Yeah, testies: a lightweight library for quick, simple unit-testing",
-            "time": "2017-06-02T13:06:21+00:00"
+            "time": "2018-10-23T07:30:41+00:00"
         },
         {
             "name": "nyholm/psr7",
