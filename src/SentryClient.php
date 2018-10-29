@@ -3,13 +3,12 @@
 namespace Kodus\Sentry;
 
 use Kodus\Sentry\Extensions\ClientSniffer;
+use Kodus\Sentry\Extensions\EnvironmentReporter;
 use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Model\Breadcrumb;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\Level;
-use Kodus\Sentry\Model\OSContext;
 use Kodus\Sentry\Model\Request;
-use Kodus\Sentry\Model\RuntimeContext;
 use Kodus\Sentry\Model\UserInfo;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -65,16 +64,6 @@ class SentryClient
     private $dsn;
 
     /**
-     * @var OSContext
-     */
-    private $os;
-
-    /**
-     * @var RuntimeContext
-     */
-    private $runtime;
-
-    /**
      * @var Breadcrumb[] list of Breadcrumbs being collected for the next Event
      */
     private $breadcrumbs = [];
@@ -112,10 +101,6 @@ class SentryClient
         $this->auth_header = "X-Sentry-Auth: " . $auth_tokens;
 
         $this->url = "{$url['scheme']}://{$url['host']}/api{$url['path']}/store/";
-
-        $this->runtime = $this->createRuntimeContext();
-
-        $this->os = $this->createOSContext();
     }
 
     /**
@@ -140,6 +125,7 @@ class SentryClient
     protected function createBuiltInExtensions(): array
     {
         return [
+            new EnvironmentReporter(),
             new ExceptionReporter(),
             new ClientSniffer(),
         ];
@@ -171,12 +157,6 @@ class SentryClient
         //       in the title of the Sentry error-page, this is the best we can do for now.
 
         $event->transaction = $exception->getFile() . "#" . $exception->getLine();
-
-        $event->addContext($this->os);
-
-        $event->addContext($this->runtime);
-
-        $event->addTag("server_name", php_uname('n'));
 
         if ($request) {
             $this->applyRequestDetails($event, $request);
@@ -342,35 +322,5 @@ class SentryClient
         }
 
         return $response;
-    }
-
-    /**
-     * Create run-time context information about this PHP installation.
-     *
-     * @return RuntimeContext
-     */
-    private function createRuntimeContext(): RuntimeContext
-    {
-        $name = "php";
-
-        $raw_description = PHP_VERSION;
-
-        preg_match("#^\d+(\.\d+){2}#", $raw_description, $version);
-
-        return new RuntimeContext($name, $version[0], $raw_description);
-    }
-
-    /**
-     * Create the OS context information about this Operating System.
-     *
-     * @return OSContext
-     */
-    private function createOSContext(): OSContext
-    {
-        $name = php_uname("s");
-        $version = php_uname("v");
-        $build = php_uname("r");
-
-        return new OSContext($name, $version, $build);
     }
 }
