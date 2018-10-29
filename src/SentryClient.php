@@ -10,39 +10,14 @@ use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 use Throwable;
 
+// TODO grouping / fingerprints https://docs.sentry.io/learn/rollups/?platform=node#custom-grouping
+
 class SentryClient
 {
     /**
      * @string version of this client package
      */
     const VERSION = "1.0.0";
-
-    /**
-     * @var string[] map where PHP error-level => Sentry Event error-level
-     *
-     * @link http://php.net/manual/en/errorfunc.constants.php
-     *
-     * @link https://docs.sentry.io/clientdev/attributes/#optional-attributes
-     */
-    public $error_levels = [
-        E_DEPRECATED        => Level::WARNING,
-        E_USER_DEPRECATED   => Level::WARNING,
-        E_WARNING           => Level::WARNING,
-        E_USER_WARNING      => Level::WARNING,
-        E_RECOVERABLE_ERROR => Level::WARNING,
-        E_ERROR             => Level::FATAL,
-        E_PARSE             => Level::FATAL,
-        E_CORE_ERROR        => Level::FATAL,
-        E_CORE_WARNING      => Level::FATAL,
-        E_COMPILE_ERROR     => Level::FATAL,
-        E_COMPILE_WARNING   => Level::FATAL,
-        E_USER_ERROR        => Level::ERROR,
-        E_NOTICE            => Level::INFO,
-        E_USER_NOTICE       => Level::INFO,
-        E_STRICT            => Level::INFO,
-    ];
-
-    // TODO grouping / fingerprints https://docs.sentry.io/learn/rollups/?platform=node#custom-grouping
 
     /**
      * @var string Sentry API endpoint

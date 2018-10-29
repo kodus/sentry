@@ -76,6 +76,19 @@ test(
 );
 
 test(
+    "can map to Sentry severity-level",
+    function () {
+        $client = new MockSentryClient();
+
+        $client->captureException(new ErrorException("foo", 0, E_USER_NOTICE));
+
+        $body = json_decode($client->requests[0]->body, true);
+
+        eq($body["level"], "info");
+    }
+);
+
+test(
     "can capture Exception",
     function () {
         $client = new MockSentryClient();

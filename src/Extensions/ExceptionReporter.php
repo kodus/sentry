@@ -3,10 +3,12 @@
 namespace Kodus\Sentry\Extensions;
 
 use Closure;
+use ErrorException;
 use Exception;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\ExceptionInfo;
 use Kodus\Sentry\Model\ExceptionList;
+use Kodus\Sentry\Model\Level;
 use Kodus\Sentry\Model\StackFrame;
 use Kodus\Sentry\Model\StackTrace;
 use Kodus\Sentry\SentryClientExtension;
@@ -34,6 +36,31 @@ class ExceptionReporter implements SentryClientExtension
     protected $max_string_length;
 
     /**
+     * @var string[] map where PHP error-level => Sentry Event error-level
+     *
+     * @link http://php.net/manual/en/errorfunc.constants.php
+     *
+     * @link https://docs.sentry.io/clientdev/attributes/#optional-attributes
+     */
+    public $error_levels = [
+        E_DEPRECATED        => Level::WARNING,
+        E_USER_DEPRECATED   => Level::WARNING,
+        E_WARNING           => Level::WARNING,
+        E_USER_WARNING      => Level::WARNING,
+        E_RECOVERABLE_ERROR => Level::WARNING,
+        E_ERROR             => Level::FATAL,
+        E_PARSE             => Level::FATAL,
+        E_CORE_ERROR        => Level::FATAL,
+        E_CORE_WARNING      => Level::FATAL,
+        E_COMPILE_ERROR     => Level::FATAL,
+        E_COMPILE_WARNING   => Level::FATAL,
+        E_USER_ERROR        => Level::ERROR,
+        E_NOTICE            => Level::INFO,
+        E_USER_NOTICE       => Level::INFO,
+        E_STRICT            => Level::INFO,
+    ];
+
+    /**
      * The optional `$root_path`, if given, will be stripped from filenames.
      *
      * @param string|null $root_path         absolute project root-path (e.g. Composer root path; optional)
@@ -50,6 +77,22 @@ class ExceptionReporter implements SentryClientExtension
 
     public function apply(Event $event, Throwable $exception, ?ServerRequestInterface $request): void
     {
+        if ($exception instanceof ErrorException) {
+            $event->level = $this->error_levels[$exception->getSeverity()] ?: Level::ERROR;
+        }
+
+        $event->exception = $this->createExceptionList($exception);
+    }
+
+    /**
+     * Creates an {@see ExceptionList} instance from a given {@see Throwable}.
+     *
+     * @param Throwable $exception
+     *
+     * @return ExceptionList
+     */
+    protected function createExceptionList(Throwable $exception): ExceptionList
+    {
         $items = [];
 
         while ($exception) {
@@ -58,7 +101,7 @@ class ExceptionReporter implements SentryClientExtension
             $exception = $exception->getPrevious();
         }
 
-        $event->exception = new ExceptionList(array_reverse($items));
+        return new ExceptionList(array_reverse($items));
     }
 
     /**
