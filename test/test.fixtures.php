@@ -1,8 +1,9 @@
 <?php
 
-use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Extensions\ClientIPDetector;
-use Kodus\Sentry\Extensions\RootPathRemover;
+use Kodus\Sentry\Extensions\ClientSniffer;
+use Kodus\Sentry\Extensions\EnvironmentReporter;
+use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\SentryClient;
 
@@ -101,7 +102,15 @@ class MockSentryClient extends SentryClient
 
     public function __construct()
     {
-        parent::__construct(self::MOCK_DSN, [new ClientIPDetector(), new RootPathRemover(__DIR__)]);
+        parent::__construct(
+            self::MOCK_DSN,
+            [
+                new EnvironmentReporter(),
+                new ExceptionReporter(__DIR__),
+                new ClientSniffer(),
+                new ClientIPDetector(),
+            ]
+        );
     }
 
     /**

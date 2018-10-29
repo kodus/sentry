@@ -64,7 +64,7 @@ test(
         eq($client->testFormat(new ClassFixture()), '{' . ClassFixture::class . '}');
         eq($client->testFormat([new ClassFixture(), 'instanceMethod']), '{' . ClassFixture::class . '}->instanceMethod()');
         eq($client->testFormat(['ClassFixture', 'staticMethod']), ClassFixture::class . '::staticMethod()');
-        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(65)}');
+        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(66)}');
         eq($client->testFormat(new InvokableClassFixture()), '{' . InvokableClassFixture::class . '}');
 
         eq($client->testFormat($file), '{stream}', "reports open streams as '{stream}'");
@@ -110,7 +110,7 @@ test(
 
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
-        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#19", "can capture 'transaction' (filename and line-number)");
+        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#20", "can capture 'transaction' (filename and line-number)");
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
@@ -152,10 +152,10 @@ test(
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
         eq($inner_frames[3]["filename"], $expected_filename, "call site does not specify a function");
 
-        eq($inner_frames[0]["lineno"], 37, "can capture line-numbers");
-        eq($inner_frames[1]["lineno"], 17);
-        eq($inner_frames[2]["lineno"], 29);
-        eq($inner_frames[3]["lineno"], 26, "can capture line-number of failed call-site");
+        eq($inner_frames[0]["lineno"], 38, "can capture line-numbers");
+        eq($inner_frames[1]["lineno"], 18);
+        eq($inner_frames[2]["lineno"], 30);
+        eq($inner_frames[3]["lineno"], 27, "can capture line-number of failed call-site");
 
         eq(
             $inner_frames[0]["context_line"],

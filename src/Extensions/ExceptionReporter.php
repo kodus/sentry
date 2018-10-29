@@ -19,33 +19,36 @@ use SplFileObject;
 use Throwable;
 
 /**
- * This extensions reports details about Exceptions, including stack-traces and vars.
+ * This extension reports details about Exceptions, including stack-traces and vars.
  */
 class ExceptionReporter implements SentryClientExtension
 {
+    /**
+     * @var string root path (with trailing directory-separator)
+     */
+    protected $root_path;
+
     /**
      * @var int maximum length of formatted string-values
      */
     protected $max_string_length;
 
-    public function __construct($max_string_length = 200)
+    /**
+     * The optional `$root_path`, if given, will be stripped from filenames.
+     *
+     * @param string|null $root_path         absolute project root-path (e.g. Composer root path; optional)
+     * @param int         $max_string_length PHP values longer than this will be truncated
+     */
+    public function __construct(?string $root_path = null, $max_string_length = 200)
     {
+        $this->root_path = $root_path
+            ? rtrim($root_path, "/\\") . "/"
+            : null;
+
         $this->max_string_length = $max_string_length;
     }
 
     public function apply(Event $event, Throwable $exception, ?ServerRequestInterface $request): void
-    {
-        $event->exception = $this->createExceptionList($exception);
-    }
-
-    /**
-     * Creates an {@see ExceptionList} instance from a given {@see Throwable}.
-     *
-     * @param Throwable $exception
-     *
-     * @return ExceptionList
-     */
-    protected function createExceptionList(Throwable $exception): ExceptionList
     {
         $items = [];
 
@@ -55,7 +58,7 @@ class ExceptionReporter implements SentryClientExtension
             $exception = $exception->getPrevious();
         }
 
-        return new ExceptionList(array_reverse($items));
+        $event->exception = new ExceptionList(array_reverse($items));
     }
 
     /**
@@ -127,6 +130,11 @@ class ExceptionReporter implements SentryClientExtension
 
         if ($filename !== "{no file}") {
             $this->loadContext($frame, $filename, $lineno, 5);
+
+            if ($this->root_path && strpos($filename, $this->root_path) !== -1) {
+                $frame->abs_path = $filename;
+                $frame->filename = substr($filename, strlen($this->root_path));
+            }
         }
 
         if (isset($entry['args'])) {

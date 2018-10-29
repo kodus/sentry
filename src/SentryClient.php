@@ -2,9 +2,6 @@
 
 namespace Kodus\Sentry;
 
-use Kodus\Sentry\Extensions\ClientSniffer;
-use Kodus\Sentry\Extensions\EnvironmentReporter;
-use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Model\Breadcrumb;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\Level;
@@ -81,10 +78,7 @@ class SentryClient
     {
         $this->dsn = $dsn;
 
-        $this->extensions = array_merge(
-            $this->createBuiltInExtensions(),
-            $extensions
-        );
+        $this->extensions = $extensions;
 
         $url = parse_url($this->dsn);
 
@@ -115,20 +109,6 @@ class SentryClient
         $event = $this->createEvent($exception, $request);
 
         $this->captureEvent($event);
-    }
-
-    /**
-     * Creates built-in extensions, which get applied before any optional custom extensions.
-     *
-     * @return SentryClientExtension[]
-     */
-    protected function createBuiltInExtensions(): array
-    {
-        return [
-            new EnvironmentReporter(),
-            new ExceptionReporter(),
-            new ClientSniffer(),
-        ];
     }
 
     /**
