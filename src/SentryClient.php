@@ -5,7 +5,6 @@ namespace Kodus\Sentry;
 use Kodus\Sentry\Model\Breadcrumb;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\Level;
-use Kodus\Sentry\Model\Request;
 use Kodus\Sentry\Model\UserInfo;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -72,7 +71,7 @@ class SentryClient
 
     /**
      * @param string                  $dsn        Sentry DSN
-     * @param SentryClientExtension[] $extensions optional list of custom Client Extensions
+     * @param SentryClientExtension[] $extensions list of Client Extensions to use
      */
     public function __construct(string $dsn, array $extensions = [])
     {
@@ -122,11 +121,13 @@ class SentryClient
      */
     protected function createEvent(Throwable $exception, ?ServerRequestInterface $request = null): Event
     {
-        $timestamp = $this->createTimestamp();
-
-        $event_id = $this->createEventID();
-
-        $event = new Event($event_id, $timestamp, $exception->getMessage(), new UserInfo(), $this->breadcrumbs);
+        $event = new Event(
+            $this->createEventID(),
+            $this->createTimestamp(),
+            $exception->getMessage(),
+            new UserInfo(),
+            $this->breadcrumbs
+        );
 
         $this->clearBreadcrumbs();
 
@@ -137,10 +138,6 @@ class SentryClient
         //       in the title of the Sentry error-page, this is the best we can do for now.
 
         $event->transaction = $exception->getFile() . "#" . $exception->getLine();
-
-        if ($request) {
-            $this->applyRequestDetails($event, $request);
-        }
 
         foreach($this->extensions as $extension) {
             $extension->apply($event, $exception, $request);
@@ -161,7 +158,7 @@ class SentryClient
         $headers = [
             "Accept: application/json",
             "Content-Type: application/json",
-            $this->createAuthHeader($event->timestamp),
+            sprintf($this->auth_header, $event->timestamp),
         ];
 
         $response = $this->fetch("POST", $this->url, $body, $headers);
@@ -220,44 +217,6 @@ class SentryClient
             $bytes[11], $bytes[12], $bytes[13], $bytes[14], $bytes[15], $bytes[16]
         );
     }
-
-    /**
-     * Creates the `X-Sentry-Auth` header.
-     *
-     * @param int $timestamp
-     *
-     * @return string
-     */
-    private function createAuthHeader(int $timestamp)
-    {
-        return sprintf($this->auth_header, $timestamp);
-    }
-
-    /**
-     * Populates the given {@see Event} instance with information about the given {@see ServerRequestInterface}.
-     *
-     * @param Event                  $event
-     * @param ServerRequestInterface $request
-     */
-    protected function applyRequestDetails(Event $event, ServerRequestInterface $request)
-    {
-        $event->addTag("site", $request->getUri()->getHost());
-
-        $event->request = new Request($request->getUri()->__toString(), $request->getMethod());
-
-        $event->request->query_string = $request->getUri()->getQuery();
-
-        $event->request->cookies = $request->getCookieParams();
-
-        $headers = [];
-
-        foreach (array_keys($request->getHeaders()) as $name) {
-            $headers[$name] = $request->getHeaderLine($name);
-        }
-
-        $event->request->headers = $headers;
-    }
-
 
     /**
      * Perform an HTTP request and return the response body.

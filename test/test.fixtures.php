@@ -4,6 +4,7 @@ use Kodus\Sentry\Extensions\ClientIPDetector;
 use Kodus\Sentry\Extensions\ClientSniffer;
 use Kodus\Sentry\Extensions\EnvironmentReporter;
 use Kodus\Sentry\Extensions\ExceptionReporter;
+use Kodus\Sentry\Extensions\RequestReporter;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\SentryClient;
 
@@ -106,6 +107,7 @@ class MockSentryClient extends SentryClient
             self::MOCK_DSN,
             [
                 new EnvironmentReporter(),
+                new RequestReporter(),
                 new ExceptionReporter(__DIR__),
                 new ClientSniffer(),
                 new ClientIPDetector(),
