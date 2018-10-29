@@ -49,7 +49,7 @@ Bootstrapping the client itself is trivial - the
 [Sentry DSN](https://docs.sentry.io/learn/configuration/?platform=node#dsn) is the only dependency:
 
 ```php
-$client = new SentryClient("https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571");
+$client = new SentryClient("https://0123456789abcdef0123456789abcdef@sentry.io/1234567");
 ```
 
 There are additional options, which will be discussed in the [Configuration](#configuration) section.

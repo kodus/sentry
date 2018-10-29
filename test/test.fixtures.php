@@ -90,15 +90,15 @@ class Request
 
 class MockSentryClient extends SentryClient
 {
-    const EVENT_ID = "a1f1cddefbd54085822f50ef14c7c9a8";
+    const MOCK_EVENT_ID = "a1f1cddefbd54085822f50ef14c7c9a8";
 
-    const DSN = "https://a1f1cddefbd54085822f50ef14c7c9a8@sentry.io/1292571";
+    const MOCK_DSN = "https://0123456789abcdef0123456789abcdef@sentry.io/1234567";
 
     public $time = 1538738714;
 
     public function __construct()
     {
-        parent::__construct(self::DSN, __DIR__);
+        parent::__construct(self::MOCK_DSN, __DIR__);
     }
 
     /**
@@ -113,7 +113,7 @@ class MockSentryClient extends SentryClient
 
     protected function createEventID(): string
     {
-        return self::EVENT_ID;
+        return self::MOCK_EVENT_ID;
     }
 
     protected function fetch(string $method, string $url, string $body, array $headers = []): string
