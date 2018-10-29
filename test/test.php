@@ -84,14 +84,16 @@ test(
 
         eq(count($client->requests), 1, "it performs a request");
 
-        $EVENT_ID = MockSentryClient::EVENT_ID;
+        $EVENT_ID = MockSentryClient::MOCK_EVENT_ID;
 
         $TIMESTAMP = $client->time;
+
+        $SENTRY_KEY = substr(MockSentryClient::MOCK_DSN, strlen("https://"), 32);
 
         $EXPECTED_HEADERS = [
             "Accept: application/json",
             "Content-Type: application/json",
-            "X-Sentry-Auth: Sentry sentry_version=7, sentry_timestamp={$TIMESTAMP}, sentry_key={$EVENT_ID}, sentry_client=kodus-sentry/" . SentryClient::VERSION,
+            "X-Sentry-Auth: Sentry sentry_version=7, sentry_timestamp={$TIMESTAMP}, sentry_key={$SENTRY_KEY}, sentry_client=kodus-sentry/" . SentryClient::VERSION,
         ];
 
         eq($client->requests[0]->headers, $EXPECTED_HEADERS, "it submits the expected headers");

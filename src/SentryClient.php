@@ -763,13 +763,15 @@ class SentryClient
             ],
         ]);
 
-        $response = file_get_contents($url, false, $context);
+        $stream = fopen($url, "r", false, $context);
 
-        /**
-         * @var array $http_response_header materializes out of thin air
-         */
+        $response = stream_get_contents($stream);
 
-        $status_line = $http_response_header[0];
+        $headers = stream_get_meta_data($stream)['wrapper_data'];
+
+        $status_line = $headers[0];
+
+        fclose($stream);
 
         preg_match('{HTTP\/\S*\s(\d{3})}', $status_line, $match);
 
