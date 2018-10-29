@@ -14,8 +14,8 @@ The client is (by and large) a single class backed by a bunch of simple model ob
 of the Sentry ingestion API end-point it gets posted to.
 
 The API deviates from the [Unified API](https://docs.sentry.io/clientdev/unified-api/) recommendation - our
-goal is to log details exceptions and logged events leading up to those exceptions, with as little coupling
-and dependency on the client as possible.
+goal is to log detailed exceptions, and capture log-entries leading up to those exceptions, with as little
+coupling and dependency on the client as possible.
 
 With most members declared as `protected`, you can further extend and override/enhance various aspects
 of exception/error/request-processing with simple code that modifies the (fully type-hinted) model.
@@ -25,7 +25,7 @@ of exception/error/request-processing with simple code that modifies the (fully 
 Most of the useful features of the official client - plus some useful extras.
 
   * Detailed stack-traces with source-code context, paths/filenames, line-numbers.
-  * Logging of "breadcrumbs" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
+  * Logging of "[breadcrumbs](https://docs.sentry.io/clientdev/interfaces/breadcrumbs/)" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
   * Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
   * Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
   * Reports PHP and OS versions, server name, site name, etc.
