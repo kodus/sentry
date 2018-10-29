@@ -147,11 +147,6 @@ class SentryClient
     private $dsn;
 
     /**
-     * @var null|string root path (with trailing directory-separator) (if defined)
-     */
-    private $root_path;
-
-    /**
      * @var OSContext
      */
     private $os;
@@ -167,13 +162,19 @@ class SentryClient
     private $breadcrumbs = [];
 
     /**
-     * @param string      $dsn       Sentry DSN
-     * @param string|null $root_path absolute project root-path (e.g. Composer root path; optional)
+     * @var SentryClientExtension[]
      */
-    public function __construct(string $dsn, ?string $root_path = null)
+    private $extensions;
+
+    /**
+     * @param string                  $dsn        Sentry DSN
+     * @param SentryClientExtension[] $extensions optional list of Extensions
+     */
+    public function __construct(string $dsn, array $extensions = [])
     {
         $this->dsn = $dsn;
-        $this->root_path = $root_path ? rtrim($root_path, "/\\") . "/" : null;
+
+        $this->extensions = $extensions;
 
         $url = parse_url($this->dsn);
 
@@ -247,6 +248,10 @@ class SentryClient
 
         if ($request) {
             $this->applyRequestDetails($event, $request);
+        }
+
+        foreach($this->extensions as $extension) {
+            $extension->apply($event, $exception, $request);
         }
 
         return $event;
@@ -512,13 +517,6 @@ class SentryClient
             : 0;
 
         $frame = new StackFrame($filename, $function, $lineno);
-
-        if ($this->root_path) {
-            if (strpos($filename, $this->root_path) !== -1) {
-                $frame->abs_path = $filename;
-                $frame->filename = substr($filename, strlen($this->root_path));
-            }
-        }
 
         if ($filename !== "{no file}") {
             $this->loadContext($frame, $filename, $lineno, 5);

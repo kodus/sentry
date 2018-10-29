@@ -1,5 +1,6 @@
 <?php
 
+use Kodus\Sentry\Extensions\RootPathRemover;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\SentryClient;
 
@@ -98,7 +99,7 @@ class MockSentryClient extends SentryClient
 
     public function __construct()
     {
-        parent::__construct(self::MOCK_DSN, __DIR__);
+        parent::__construct(self::MOCK_DSN, [new RootPathRemover(__DIR__)]);
     }
 
     /**
