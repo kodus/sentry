@@ -1,5 +1,6 @@
 <?php
 
+use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Extensions\RootPathRemover;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\SentryClient;
@@ -133,7 +134,10 @@ class MockSentryClient extends SentryClient
     {
         return parent::fetch($method, $url, $body, $headers);
     }
+}
 
+class MockExceptionReporter extends ExceptionReporter
+{
     public function testFormat($value): string
     {
         return $this->formatValue($value);
