@@ -19,18 +19,17 @@ class ClientIPDetector implements SentryClientExtension
      *
      * @see applyRequestDetails()
      */
-    protected $user_ip_headers;
+    public $user_ip_headers;
 
     /**
-     * @param array $user_ip_headers map where header-name => regular expression pattern
+     * @param array|null $user_ip_headers optional map where header-name => regular expression pattern
      */
-    public function __construct(
-        array $user_ip_headers = [
-            "X-Forwarded-For" => '/^([^,\s$]+)/i',  // https://en.wikipedia.org/wiki/X-Forwarded-For
-            "Forwarded"       => '/for=([^;,]+)/i', // https://tools.ietf.org/html/rfc7239
-        ]
-    ) {
-        $this->user_ip_headers = $user_ip_headers;
+    public function __construct(?array $user_ip_headers = null) {
+        $this->user_ip_headers = $user_ip_headers
+            ?: [
+                "X-Forwarded-For" => '/^([^,\s$]+)/i',  // https://en.wikipedia.org/wiki/X-Forwarded-For
+                "Forwarded"       => '/for=([^;,]+)/i', // https://tools.ietf.org/html/rfc7239
+            ];
     }
 
     public function apply(Event $event, Throwable $exception, ?ServerRequestInterface $request): void
