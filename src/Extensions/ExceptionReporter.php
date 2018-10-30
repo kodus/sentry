@@ -36,6 +36,9 @@ class ExceptionReporter implements SentryClientExtension
     protected $max_string_length;
 
     /**
+     * Severity of `ErrorException` mappings are identical to the official (2.0) client
+     * by default - you can override the error-level mappings via this public property.
+     *
      * @var string[] map where PHP error-level => Sentry Event error-level
      *
      * @link http://php.net/manual/en/errorfunc.constants.php

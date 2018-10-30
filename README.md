@@ -10,8 +10,8 @@ Lightweight [Sentry](https://sentry.io/welcome/) client with no dependencies.
 
 This package is an alternative to the [official PHP client](https://github.com/getsentry/sentry-php) for Sentry.
 
-The client is (by and large) a single class backed by a bunch of simple model objects that match the shape
-of the Sentry ingestion API end-point it gets posted to.
+The library consists of a client class, an event-model model that matches the shape of the Sentry API, and
+an interface for extensions.
 
 The API deviates from the [Unified API](https://docs.sentry.io/clientdev/unified-api/) recommendation - our
 goal is to log detailed exceptions, and capture log-entries leading up to those exceptions, with as little
@@ -22,21 +22,23 @@ of exception/error/request-processing with simple code that modifies the (fully 
 
 ### Features
 
-Most of the useful features of the official client - plus some useful extras.
+This client has most of the features of the official client plus some extras.
 
-  * Detailed stack-traces with source-code context, paths/filenames, line-numbers.
-  * Logging of "[breadcrumbs](https://docs.sentry.io/clientdev/interfaces/breadcrumbs/)" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
-  * Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
-  * Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
-  * Reports PHP and OS versions, server name, site name, etc.
-  * Severity of `ErrorException` mappings identical to the official (2.0) client.
+All features are opt-in, and the package ships with the following extensions:
+
+  * `RequestReporter`: reports details about the (PSR-7) HTTP Request.
+  * `ExceptionReporter`: Provides detailed stack-traces with source-code context, paths/filenames, line-numbers, etc.
+  * TODO Logging of "[breadcrumbs](https://docs.sentry.io/clientdev/interfaces/breadcrumbs/)" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
+  * `ClientSniffer`: Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
+  * `ClientIPDetector`: Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
+  * `EnvironmentReporter`: Reports PHP and OS versions, server name, site name, etc.
 
 Non-features:
 
   * No built-in error-handler: your framework/stack/app probably has one, and this client should be
     very easy to integrate just about anywhere.
   * No post-data recording: scrubbing/sanitization is unreliable. (if you're willing to take the risk,
-    the fields are there in the model, and you can implement that easily.)
+    the fields are there in the model, and you can implement your own extension.)
 
 ### Usage
 
@@ -45,18 +47,32 @@ Most modern frameworks by now have some sort of DI container and an error-handle
 To avoid getting caught up in the specifics of various frameworks, in this section, we'll demonstrate
 how to bootstrap and integrate the client independently of any specific framework.
 
-Bootstrapping the client itself is trivial - the
-[Sentry DSN](https://docs.sentry.io/learn/configuration/?platform=node#dsn) is the only dependency:
+To bootstrap the client itself, you need a [Sentry DSN](https://docs.sentry.io/learn/configuration/?platform=node#dsn)
+and a your choice of extensions - this example uses all the built-in extensions:
 
 ```php
-$client = new SentryClient("https://0123456789abcdef0123456789abcdef@sentry.io/1234567");
+$client = new SentryClient(
+    "https://0123456789abcdef0123456789abcdef@sentry.io/1234567",
+    [
+        new EnvironmentReporter(),
+        new RequestReporter(),
+        new ExceptionReporter(),
+        new ClientSniffer(),
+        new ClientIPDetector(),
+    ]
+);
 ```
 
-There are additional options, which will be discussed in the [Configuration](#configuration) section.
+Some extensions support additional options, which will be described in the [Configuration](#configuration) section.
 
 To capture PHP errors, we'll need to add an error-handler that maps errors to instances of the
-built-in [`ErrorException`](http://php.net/manual/en/class.errorexception.php) class - the following
-simplified error-handler throws for all error-levels except `E_NOTICE` and `E_WARNING`, which it
+built-in [`ErrorException`](http://php.net/manual/en/class.errorexception.php) class.
+
+Note that most frameworks and error-handlers already have something like this built-in - an existing
+error-handler likely is designed to be the only global error-handler, and will likely offer an abstraction
+and some sort of API over `set_error_handler()`.
+
+The following simplified error-handler throws for all error-levels except `E_NOTICE` and `E_WARNING`, which it
 silently captures to the `$client` instance we created above:
 
 ```php
@@ -72,10 +88,6 @@ set_error_handler(
     },
 );
 ```
-
-(Note that most frameworks and error-handlers already have something like this built-in - an existing
-error-handler likely is designed to be the only global error-handler, and will likely offer an abstraction
-and some sort of API over `set_error_handler()`.)
 
 Now that we have `ErrorException` being thrown for PHP errors, we can handle any error/exception
 consistently with a `try`/`catch`-statement surrounding any statements in the top-level script:
@@ -93,9 +105,9 @@ try {
 We now have basic error-handling and silent capture of warnings and notices.
 
 In a [PSR-15](https://www.php-fig.org/psr/psr-7/) middleware context, we can capture useful additional
-information about the `RequestInterface` instance that initiated the error - typically, we'll do this
-with a simple middleware at the top of the middleware-stack, which will simply delegate to the next
-middleware in a `try`/`catch`-statement.
+information about the `ServerRequestInterface` instance that initiated the error - typically, we'll do this
+with a middleware at the top of the middleware-stack, which will delegate to the next middleware from
+a `try`/`catch`-block.
 
 Here's a basic example of an anonymous middleware being added to an array of middlewares:
 
@@ -156,50 +168,41 @@ on the client instance at the start/end of a request.
 
 #### Configuration
 
-The constructor accepts a second argument, `$root_path` - if specified, the project root-path will be
-stripped from visible filenames in stack-traces.
+A few of the extensions support optional constructor arguments to configure some optional features.
 
-You can configure a few different aspects of exception and request processing via public properties.
+##### `ExceptionReporter`
 
-Use `$error_levels` to configure how PHP error-levels map to Sentry severity-levels. (The default
-configuration matches that of the official 2.0 client.)
+The constructor accepts two optional argument:
+
+  * `$root_path` - if specified, the project root-path will be removed from visible filenames in stack-traces.
+  * `$max_string_length` - specifies the maximum length at which reported PHP values will be truncated.
+
+In addition, the public `$error_levels` property lets you customize how PHP error-levels map to
+Sentry severity-levels. The default configuration matches that of the official 2.0 client.
+
+##### `ClientSniffer`
 
 If your client base uses rare or exotic clients, you can add your own regular expression patterns to
-to `$browser_patterns` and `$os_patterns` to enhance the browser classifications. The default
-configuration will recognize most common browsers and versions, operating systems and most common bots.
+to the public `$browser_patterns` and `$os_patterns` properties to enhance the browser classifications.
+The default configuration will recognize most common browsers and versions, operating systems and bots.
 
-Replace or add to `$user_ip_headers` to detect client IP addresses in unusual environments - the
-built-in patterns support most ordinary cache/proxy-servers.
+##### `ClientIPDetector`
+
+Replace or add to `$user_ip_headers` to detect client IP addresses in unusual environments.
+The built-in patterns support most ordinary cache/proxy-servers.
 
 #### Customization
 
-The client class is designed with project-specific extensions in mind - while it performs, essentially,
-a single function, this is implemented as many `protected` methods designed for you to extend and
-override with application-dependent details.
+The client class and extensions were designed with project-specific extensions in mind and
+contain many `protected` methods designed for you to extend and override their behavior.
 
-For example, maybe you want to include a database DSN that is required and defined for your project:
-
-```php
-class MyAppSentryClient extends SentryClient
-{
-    protected function createEvent(Throwable $exception, ?ServerRequestInterface $request = null): Event
-    {
-        $event = parent::createEvent($exception, $request);
-        
-        $event->tags['dsn'] = getenv('MY_APP_DSN');
-        
-        return $event;
-    }
-}
-```
-
-Using these simple extension points, you can customize how events get created and captured, how
+Using `protected` overrides, you can customize how events get created and captured, how
 exceptions and requests get processed, client IP detection and filtering, how PHP values are
 formatted in stack-traces, and many other details.
 
-Refer to the source-code for extension points - and note that we version this package semantically:
-breaking changes to `protected` methods of the non-`final` client class *will* be correctly versioned
-as major releases.
+Please refer to the source-code for available `protected` methods - and note that we're
+committed to versioning this package semantically: any breaking changes to `protected` methods
+will be versioned as major releases.
 
 ### Why?
 
@@ -222,7 +225,7 @@ We want something simple, fast and transparent.
 
 We also insist on code with good IDE support, which provides better insight for someone reading/modifying the
 code, and reduces the potential for silent errors - the official client juggles `array` values, whereas our
-model formally describes the JSON body-shape with plain PHP objects/classes that implement `JsonSerializable`.
+model formally describes the JSON body-shape with a plain PHP class-hierarchy that implements `JsonSerializable`.
 
 Note that we only model the portion of the JSON body shape that makes sense in a PHP context - if you find
-something missing or incorrect, a PR is of course more than welcome!
+something to be missing or incorrect, pull-requests are more than welcome.
