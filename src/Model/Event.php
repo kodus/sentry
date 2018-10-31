@@ -98,29 +98,27 @@ class Event implements JsonSerializable
     public $extra = [];
 
     /**
+     * @var Breadcrumb[] breadcrumbs collected prior to the capture of this Event
+     */
+    public $breadcrumbs = [];
+
+    /**
      * @var Context[] map where Context Type => Context
      */
     protected $contexts = [];
-
-    /**
-     * @var Breadcrumb[] breadcrumbs collected prior to the creation of this Event
-     */
-    protected $breadcrumbs = [];
 
     /**
      * @param string       $event_id
      * @param int          $timestamp
      * @param string       $message
      * @param UserInfo     $user
-     * @param Breadcrumb[] $breadcrumbs
      */
-    public function __construct(string $event_id, int $timestamp, string $message, UserInfo $user, array $breadcrumbs)
+    public function __construct(string $event_id, int $timestamp, string $message, UserInfo $user)
     {
         $this->event_id = $event_id;
         $this->timestamp = $timestamp;
         $this->message = $message;
         $this->user = $user;
-        $this->breadcrumbs = $breadcrumbs;
     }
 
     /**

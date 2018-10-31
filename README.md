@@ -26,12 +26,13 @@ This client has most of the features of the official client plus some extras.
 
 All features are opt-in, and the package ships with the following extensions:
 
-  * `RequestReporter`: reports details about the (PSR-7) HTTP Request.
+  * `EnvironmentReporter`: Reports PHP and OS versions, server name, site name, etc.
+  * `RequestReporter`: Reports details about the (PSR-7) HTTP Request.
   * `ExceptionReporter`: Provides detailed stack-traces with source-code context, paths/filenames, line-numbers, etc.
-  * TODO Logging of "[breadcrumbs](https://docs.sentry.io/clientdev/interfaces/breadcrumbs/)" via the included [PSR-3](https://www.php-fig.org/psr/psr-3/) logger-adapter.
   * `ClientSniffer`: Parses `User-Agent` for client (browser or bot) name/version/OS and adds useful tags.
   * `ClientIPDetector`: Parses `X-Forwarded-For` and `Forwarded` headers for User IP logging behind proxies.
-  * `EnvironmentReporter`: Reports PHP and OS versions, server name, site name, etc.
+  * `BreadcrumbLogger`: Reports [PSR-3](https://www.php-fig.org/psr/psr-3/) log-events
+     as "[breadcrumbs](https://docs.sentry.io/clientdev/interfaces/breadcrumbs/)".
 
 Non-features:
 
@@ -148,11 +149,8 @@ In addition, your application may log incidental useful information (such as dat
 normal operation - on failure, this information can help you diagnose the events leading up to an error.
 
 These log entries can be captured as so-called "breadcrumbs" using the provided `BreadcrumbLogger`,
-which is just a simple [PSR-3](https://www.php-fig.org/psr/psr-3/) `LoggerInterface` adapter for the client:
-
-```php
-$logger = new BreadcrumbLogger($client);
-```
+which is both a [PSR-3](https://www.php-fig.org/psr/psr-3/) `LoggerInterface` implementation and
+a `SentryClientExtension`.
 
 You *might* want to bootstrap this as your primary logger - maybe you only care about log-entries that
 lead to an error condition. However, it's more likely you'll want another logger to send log-events to
@@ -162,9 +160,10 @@ any combination of PSR-3 and monolog-handlers, filter the log-entries, and so on
 [`mouf/utils.log.psr.multi-logger`](https://github.com/thecodingmachine/utils.log.psr.multi-logger),
 if you prefer something simple.)
 
-Note that log-entries will buffer *in the client* until you capture an exception - if your
-application is a CLI script handling many requests, you will need to manually call `clearBreadcrumbs()`
-on the client instance at the start/end of a request.
+Note that log-entries will buffer *in the logger* until you capture an exception - if your
+application is a CLI script handling many requests, you will need to manually call `clear()`
+on the logger instance at the end of a successful request, since otherwise log-entries will
+accumulate across requests.
 
 #### Configuration
 
@@ -190,6 +189,11 @@ The default configuration will recognize most common browsers and versions, oper
 
 Replace or add to `$user_ip_headers` to detect client IP addresses in unusual environments.
 The built-in patterns support most ordinary cache/proxy-servers.
+
+##### `BreadcrumbLogger`
+
+The default `$log_levels` match those of the official (2.0) client - if needed, you can
+override with custom mappings from PSR-5 log-level to Sentry severity-level.
 
 #### Customization
 

@@ -1,6 +1,5 @@
 <?php
 
-use Kodus\Sentry\BreadcrumbLogger;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\Level;
 use Kodus\Sentry\SentryClient;
@@ -64,7 +63,7 @@ test(
         eq($client->testFormat(new ClassFixture()), '{' . ClassFixture::class . '}');
         eq($client->testFormat([new ClassFixture(), 'instanceMethod']), '{' . ClassFixture::class . '}->instanceMethod()');
         eq($client->testFormat(['ClassFixture', 'staticMethod']), ClassFixture::class . '::staticMethod()');
-        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(67)}');
+        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(68)}');
         eq($client->testFormat(new InvokableClassFixture()), '{' . InvokableClassFixture::class . '}');
 
         eq($client->testFormat($file), '{stream}', "reports open streams as '{stream}'");
@@ -123,7 +122,7 @@ test(
 
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
-        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#21", "can capture 'transaction' (filename and line-number)");
+        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#22", "can capture 'transaction' (filename and line-number)");
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
@@ -165,10 +164,10 @@ test(
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
         eq($inner_frames[3]["filename"], $expected_filename, "call site does not specify a function");
 
-        eq($inner_frames[0]["lineno"], 39, "can capture line-numbers");
-        eq($inner_frames[1]["lineno"], 19);
-        eq($inner_frames[2]["lineno"], 31);
-        eq($inner_frames[3]["lineno"], 28, "can capture line-number of failed call-site");
+        eq($inner_frames[0]["lineno"], 40, "can capture line-numbers");
+        eq($inner_frames[1]["lineno"], 20);
+        eq($inner_frames[2]["lineno"], 32);
+        eq($inner_frames[3]["lineno"], 29, "can capture line-number of failed call-site");
 
         eq(
             $inner_frames[0]["context_line"],
@@ -398,9 +397,9 @@ test(
 test(
     "can capture Breacrumbs via PSR-3 logger adapter",
     function () {
-        $client = new MockSentryClient();
+        $logger = new MockBreadcrumbLogger();
 
-        $logger = new BreadcrumbLogger($client);
+        $client = new MockSentryClient([$logger]);
 
         $logger->info("hello world", ["foo" => "bar"]);
 
@@ -419,13 +418,13 @@ test(
             $body["breadcrumbs"]["values"],
             [
                 [
-                    "timestamp" => $client->time,
+                    "timestamp" => $logger->time,
                     "level"     => Level::INFO,
                     "message"   => "[info] hello world",
                     "data"      => ["foo" => "bar"],
                 ],
                 [
-                    "timestamp" => $client->time,
+                    "timestamp" => $logger->time,
                     "level"     => Level::WARNING,
                     "message"   => "[warning] Danger, Mr. Robinson!",
                 ],

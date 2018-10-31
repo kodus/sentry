@@ -35,11 +35,6 @@ class SentryClient
     private $dsn;
 
     /**
-     * @var Breadcrumb[] list of Breadcrumbs being collected for the next Event
-     */
-    private $breadcrumbs = [];
-
-    /**
      * @var SentryClientExtension[]
      */
     private $extensions;
@@ -100,11 +95,8 @@ class SentryClient
             $this->createEventID(),
             $this->createTimestamp(),
             $exception->getMessage(),
-            new UserInfo(),
-            $this->breadcrumbs
+            new UserInfo()
         );
-
-        $this->clearBreadcrumbs();
 
         // NOTE: the `transaction` field is actually not intended for the *source* of the error, but for
         //       something that describes the command that resulted in the error - something application
@@ -141,31 +133,6 @@ class SentryClient
         $data = json_decode($response, true);
 
         $event->event_id = $data["id"];
-    }
-
-    /**
-     * Adds a {@see Breadcrumb} for the next {@see Event}.
-     *
-     * Note that Breadcrumbs will collect until you call {@see createEvent()} or {@see captureException()},
-     * or explicitly clear them by calling {@see clearBreadcrumbs()}.
-     *
-     * @see Level for severity-level constants
-     *
-     * @param string $message
-     * @param string $level severity level
-     * @param array  $data  optional message context data
-     */
-    public function addBreadcrumb(string $message, string $level = Level::INFO, array $data = []): void
-    {
-        $this->breadcrumbs[] = new Breadcrumb($this->createTimestamp(), $level, $message, $data);
-    }
-
-    /**
-     * Clears any Breadcrumbs collected by {@see addBreadcrumb()}.
-     */
-    public function clearBreadcrumbs(): void
-    {
-        $this->breadcrumbs = [];
     }
 
     /**

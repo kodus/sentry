@@ -1,5 +1,6 @@
 <?php
 
+use Kodus\Sentry\Extensions\BreadcrumbLogger;
 use Kodus\Sentry\Extensions\ClientIPDetector;
 use Kodus\Sentry\Extensions\ClientSniffer;
 use Kodus\Sentry\Extensions\EnvironmentReporter;
@@ -101,11 +102,18 @@ class MockSentryClient extends SentryClient
 
     public $time = 1538738714;
 
-    public function __construct()
+    /**
+     * @var BreadcrumbLogger
+     */
+    public $logger;
+
+    public function __construct(?array $extensions = null)
     {
+        $this->logger = new BreadcrumbLogger();
+
         parent::__construct(
             self::MOCK_DSN,
-            [
+            $extensions ?: [
                 new EnvironmentReporter(),
                 new RequestReporter(),
                 new ExceptionReporter(__DIR__),
@@ -153,5 +161,15 @@ class MockExceptionReporter extends ExceptionReporter
     public function testFormat($value): string
     {
         return $this->formatValue($value);
+    }
+}
+
+class MockBreadcrumbLogger extends BreadcrumbLogger
+{
+    public $time = 1540994720;
+
+    protected function createTimestamp(): int
+    {
+        return $this->time;
     }
 }
