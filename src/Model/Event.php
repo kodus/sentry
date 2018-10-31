@@ -73,6 +73,31 @@ class Event implements JsonSerializable
     public $user;
 
     /**
+     * @var string|null the name of the logger that captured this Event
+     */
+    public $logger;
+
+    /**
+     * @var string|null project release/version information (e.g. Git SHA, Composer version number, etc.)
+     */
+    public $release;
+
+    /**
+     * @var string|null project configuration/environment information (e.g. "production", "staging", etc.)
+     */
+    public $environment;
+
+    /**
+     * @var string[] map where module-name => version number (e.g. ["kodus/user" => "1.2.3"], etc.)
+     */
+    public $modules = [];
+
+    /**
+     * @var array map of arbitrary meta-data to store with the Event (e.g. ["some_key" => 1234], etc.)
+     */
+    public $extra = [];
+
+    /**
      * @var Context[] map where Context Type => Context
      */
     protected $contexts = [];
