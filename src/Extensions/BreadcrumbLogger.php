@@ -34,7 +34,7 @@ class BreadcrumbLogger extends AbstractLogger implements SentryClientExtension
     private $breadcrumbs = [];
 
     /**
-     * @param string[] $log_levels map where PSR-5 LogLevel => Sentry Level (optional)
+     * @param string[] $log_levels map where PSR-3 LogLevel => Sentry Level (optional)
      *
      * @see LogLevel
      * @see Level
