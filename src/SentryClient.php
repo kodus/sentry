@@ -128,7 +128,13 @@ class SentryClient
             sprintf($this->auth_header, $event->timestamp),
         ];
 
-        $response = $this->fetch("POST", $this->url, $body, $headers);
+        try {
+            $response = $this->fetch("POST", $this->url, $body, $headers);
+        } catch (RuntimeException $error) {
+            error_log("SentryClient: unable to access Sentry service [{$error->getMessage()}]");
+
+            return; // NOTE: fail silently
+        }
 
         $data = json_decode($response, true);
 
@@ -171,6 +177,9 @@ class SentryClient
      * @param array  $headers
      *
      * @return string response body
+     *
+     * @throws RuntimeException if unable to open the resource
+     * @throws RuntimeException for unexpected (non-200) response code
      */
     protected function fetch(string $method, string $url, string $body, array $headers = []): string
     {
@@ -184,7 +193,11 @@ class SentryClient
             ],
         ]);
 
-        $stream = fopen($url, "r", false, $context);
+        $stream = @fopen($url, "r", false, $context);
+
+        if ($stream === false) {
+            throw new RuntimeException("unable to open resource: {$method} {$url}");
+        }
 
         $response = stream_get_contents($stream);
 
