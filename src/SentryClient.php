@@ -25,6 +25,11 @@ class SentryClient
     public $proxy;
 
     /**
+     * @var int percentage of events actually sent to the server (the rest will be silently ignored)
+     */
+    public $sample_rate = 100;
+
+    /**
      * @var string Sentry API endpoint
      */
     private $url;
@@ -80,9 +85,11 @@ class SentryClient
      */
     public function captureException(Throwable $exception, ?ServerRequestInterface $request = null): void
     {
-        $event = $this->createEvent($exception, $request);
+        if (mt_rand(0, 99) < $this->sample_rate) {
+            $event = $this->createEvent($exception, $request);
 
-        $this->captureEvent($event);
+            $this->captureEvent($event);
+        }
     }
 
     /**
