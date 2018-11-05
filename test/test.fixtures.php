@@ -145,11 +145,6 @@ class MockSentryClient extends SentryClient
         return "";
     }
 
-    public function captureEvent(Event $event): void
-    {
-        parent::captureEvent($event);
-    }
-
     public function testFetch(string $method, string $url, string $body, array $headers): string
     {
         return parent::fetch($method, $url, $body, $headers);
