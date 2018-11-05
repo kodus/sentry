@@ -20,6 +20,11 @@ class SentryClient
     const VERSION = "1.0.0";
 
     /**
+     * @var string|null optional proxy server for outgoing HTTP requests (e.g. "tcp://proxy.example.com:5100")
+     */
+    public $proxy;
+
+    /**
      * @var string Sentry API endpoint
      */
     private $url;
@@ -190,6 +195,7 @@ class SentryClient
                 "header"        => implode("\r\n", $headers),
                 "content"       => $body,
                 "ignore_errors" => true,
+                "proxy"         => $this->proxy,
             ],
         ]);
 
