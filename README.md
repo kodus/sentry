@@ -62,6 +62,12 @@ $client = new SentryClient(
         new ClientIPDetector(),
     ]
 );
+
+// optional settings:
+
+$client->proxy = "tcp://proxy.example.com:5100"; // for outgoing HTTP requests, if you're behind a proxy
+
+$client->sample_rate = 50; // percentage of calls to captureException() that actually get captured
 ```
 
 Some extensions support additional options, which will be described in the [Configuration](#configuration) section.
