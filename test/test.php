@@ -1,5 +1,6 @@
 <?php
 
+use Kodus\Sentry\Model\BufferedEventCapture;
 use Kodus\Sentry\Model\Event;
 use Kodus\Sentry\Model\Level;
 use Kodus\Sentry\SentryClient;
@@ -17,7 +18,7 @@ test(
             return;
         }
 
-        $client = new MockSentryClient();
+        $client = new MockDirectEventCapture(new MockDSN());
 
         $data = ["hello" => "world"];
 
@@ -63,7 +64,7 @@ test(
         eq($client->testFormat(new ClassFixture()), '{' . ClassFixture::class . '}');
         eq($client->testFormat([new ClassFixture(), 'instanceMethod']), '{' . ClassFixture::class . '}->instanceMethod()');
         eq($client->testFormat(['ClassFixture', 'staticMethod']), ClassFixture::class . '::staticMethod()');
-        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(68)}');
+        eq($client->testFormat(empty_closure()), '{Closure in ' . __DIR__ . DIRECTORY_SEPARATOR . 'test.fixtures.php(70)}');
         eq($client->testFormat(new InvokableClassFixture()), '{' . InvokableClassFixture::class . '}');
 
         eq($client->testFormat($file), '{stream}', "reports open streams as '{stream}'");
@@ -77,11 +78,13 @@ test(
 test(
     "can map to Sentry severity-level",
     function () {
-        $client = new MockSentryClient();
+        $capture = new MockDirectEventCapture();
+
+        $client = new MockSentryClient($capture);
 
         $client->captureException(new ErrorException("foo", 0, E_USER_NOTICE));
 
-        $body = json_decode($client->requests[0]->body, true);
+        $body = json_decode($capture->requests[0]->body, true);
 
         eq($body["level"], "info");
     }
@@ -90,17 +93,21 @@ test(
 test(
     "can capture Exception",
     function () {
-        $client = new MockSentryClient();
+        $dsn = new MockDSN();
+
+        $capture = new MockDirectEventCapture($dsn);
+
+        $client = new MockSentryClient($capture);
 
         $client->captureException(exception_with("ouch"));
 
-        eq(count($client->requests), 1, "it performs a request");
+        eq(count($capture->requests), 1, "it performs a request");
 
         $EVENT_ID = MockSentryClient::MOCK_EVENT_ID;
 
-        $TIMESTAMP = $client->time;
+        $TIMESTAMP = $dsn->time;
 
-        $SENTRY_KEY = substr(MockSentryClient::MOCK_DSN, strlen("https://"), 32);
+        $SENTRY_KEY = substr(MockDSN::MOCK_DSN, strlen("https://"), 32);
 
         $EXPECTED_HEADERS = [
             "Accept: application/json",
@@ -108,9 +115,9 @@ test(
             "X-Sentry-Auth: Sentry sentry_version=7, sentry_timestamp={$TIMESTAMP}, sentry_key={$SENTRY_KEY}, sentry_client=kodus-sentry/" . SentryClient::VERSION,
         ];
 
-        eq($client->requests[0]->headers, $EXPECTED_HEADERS, "it submits the expected headers");
+        eq($capture->requests[0]->headers, $EXPECTED_HEADERS, "it submits the expected headers");
 
-        $body = json_decode($client->requests[0]->body, true);
+        $body = json_decode($capture->requests[0]->body, true);
 
         eq($body["event_id"], $EVENT_ID);
 
@@ -122,7 +129,7 @@ test(
 
         eq($body["message"], "from outer: ouch", "can capture Exception message");
 
-        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#22", "can capture 'transaction' (filename and line-number)");
+        eq($body["transaction"], __DIR__ . DIRECTORY_SEPARATOR . "test.fixtures.php#24", "can capture 'transaction' (filename and line-number)");
 
         eq($body["tags"]["server_name"], php_uname("n"), "reports local server-name in a tag");
 
@@ -164,10 +171,10 @@ test(
         eq($inner_frames[2]["function"], TraceFixture::class . "->{closure}");
         eq($inner_frames[3]["filename"], $expected_filename, "call site does not specify a function");
 
-        eq($inner_frames[0]["lineno"], 40, "can capture line-numbers");
-        eq($inner_frames[1]["lineno"], 20);
-        eq($inner_frames[2]["lineno"], 32);
-        eq($inner_frames[3]["lineno"], 29, "can capture line-number of failed call-site");
+        eq($inner_frames[0]["lineno"], 42, "can capture line-numbers");
+        eq($inner_frames[1]["lineno"], 22);
+        eq($inner_frames[2]["lineno"], 34);
+        eq($inner_frames[3]["lineno"], 31, "can capture line-number of failed call-site");
 
         eq(
             $inner_frames[0]["context_line"],
@@ -215,7 +222,9 @@ test(
 test(
     "can capture Request details",
     function () {
-        $client = new MockSentryClient();
+        $capture = new MockDirectEventCapture();
+
+        $client = new MockSentryClient($capture);
 
         $USER_AGENT_STRING = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36";
 
@@ -231,7 +240,7 @@ test(
 
         $client->captureException(new RuntimeException("boom"), $request);
 
-        $body = json_decode($client->requests[0]->body, true);
+        $body = json_decode($capture->requests[0]->body, true);
 
         eq($body["tags"]["site"], "example.com", "can capture domain-name (site) from Request");
 
@@ -298,7 +307,9 @@ test(
         ];
 
         foreach ($user_agents as $user_agent => $expected) {
-            $client = new MockSentryClient();
+            $capture = new MockDirectEventCapture();
+
+            $client = new MockSentryClient($capture);
 
             $request = new ServerRequest(
                 "POST",
@@ -311,7 +322,7 @@ test(
 
             $client->captureException(new RuntimeException("boom"), $request);
 
-            $body = json_decode($client->requests[0]->body, true);
+            $body = json_decode($capture->requests[0]->body, true);
 
             @list($expected_browser, $expected_version, $expected_os) = explode("/", $expected);
 
@@ -340,7 +351,9 @@ test(
 );
 
 function test_ip_detection(array $headers, string $expected_ip, string $why) {
-    $client = new MockSentryClient();
+    $capture = new MockDirectEventCapture();
+
+    $client = new MockSentryClient($capture);
 
     $request = new ServerRequest(
         "GET",
@@ -350,7 +363,7 @@ function test_ip_detection(array $headers, string $expected_ip, string $why) {
 
     $client->captureException(new RuntimeException("boom"), $request);
 
-    $body = json_decode($client->requests[0]->body, true);
+    $body = json_decode($capture->requests[0]->body, true);
 
     eq($body["user"]["ip_address"], $expected_ip, "{$why} - headers: " . json_encode($headers));
 }
@@ -360,37 +373,67 @@ test(
     function () {
         // RFC7239 and general IP validation rules:
 
-        test_ip_detection(['Forwarded' => 'for=127.0.0.1'], 'unknown',
-            "should reject loopback IP v4");
+        test_ip_detection(
+            ['Forwarded' => 'for=127.0.0.1'],
+            'unknown',
+            "should reject loopback IP v4"
+        );
 
-        test_ip_detection(['Forwarded' => 'for=10.0.0.1'], 'unknown',
-            "rejects IP v4 in private range");
+        test_ip_detection(
+            ['Forwarded' => 'for=10.0.0.1'],
+            'unknown',
+            "rejects IP v4 in private range"
+        );
 
-        test_ip_detection(['Forwarded' => 'For="[2001:db8:cafe::17]", for="[2001:db8:cafe::18]"'], '2001:db8:cafe::17',
-            "should match the first of several valid IPs listed");
+        test_ip_detection(
+            ['Forwarded' => 'For="[2001:db8:cafe::17]", for="[2001:db8:cafe::18]"'],
+            '2001:db8:cafe::17',
+            "should match the first of several valid IPs listed"
+        );
 
-        test_ip_detection(['Forwarded' => 'for=127.0.0.1, for="[2001:db8:cafe::17]"'], '2001:db8:cafe::17',
-            "should match the first valid IP with invalid IP listed before it");
+        test_ip_detection(
+            ['Forwarded' => 'for=127.0.0.1, for="[2001:db8:cafe::17]"'],
+            '2001:db8:cafe::17',
+            "should match the first valid IP with invalid IP listed before it"
+        );
 
-        test_ip_detection(['Forwarded' => 'For="[2001:db8:cafe::17]:81"'], '2001:db8:cafe::17',
-            "should strip port number from IP v6");
+        test_ip_detection(
+            ['Forwarded' => 'For="[2001:db8:cafe::17]:81"'],
+            '2001:db8:cafe::17',
+            "should strip port number from IP v6"
+        );
 
-        test_ip_detection(['Forwarded' => 'for=192.0.2.43:81, for=198.51.100.17'], '192.0.2.43',
-            "should strip port number from IP v4");
+        test_ip_detection(
+            ['Forwarded' => 'for=192.0.2.43:81, for=198.51.100.17'],
+            '192.0.2.43',
+            "should strip port number from IP v4"
+        );
 
-        test_ip_detection(['Forwarded' => 'for=10.0.0.1;proto=http;by=203.0.113.43'], 'unknown',
-            "should ignore IPs listed with keywords other than 'for'");
+        test_ip_detection(
+            ['Forwarded' => 'for=10.0.0.1;proto=http;by=203.0.113.43'],
+            'unknown',
+            "should ignore IPs listed with keywords other than 'for'"
+        );
 
-        test_ip_detection(['Forwarded' => 'for=flurp'], 'unknown',
-            "should reject this nonsense");
+        test_ip_detection(
+            ['Forwarded' => 'for=flurp'],
+            'unknown',
+            "should reject this nonsense"
+        );
 
         // X-Forwarded-For:
 
-        test_ip_detection(['X-Forwarded-For' => '192.168.1.3, 192.0.2.43, 192.0.2.44'], 'unknown',
-            "should match only the first listed IP address");
+        test_ip_detection(
+            ['X-Forwarded-For' => '192.168.1.3, 192.0.2.43, 192.0.2.44'],
+            'unknown',
+            "should match only the first listed IP address"
+        );
 
-        test_ip_detection(['X-Forwarded-For' => 'flurp'], 'unknown',
-            "should reject this nonsense");
+        test_ip_detection(
+            ['X-Forwarded-For' => 'flurp'],
+            'unknown',
+            "should reject this nonsense"
+        );
     }
 );
 
@@ -399,7 +442,9 @@ test(
     function () {
         $logger = new MockBreadcrumbLogger();
 
-        $client = new MockSentryClient([$logger]);
+        $capture = new MockDirectEventCapture();
+
+        $client = new MockSentryClient($capture, [$logger]);
 
         $logger->info("hello world", ["foo" => "bar"]);
 
@@ -412,7 +457,7 @@ test(
 
         $client->captureException(new RuntimeException("boom"), $request);
 
-        $body = json_decode($client->requests[0]->body, true);
+        $body = json_decode($capture->requests[0]->body, true);
 
         eq(
             $body["breadcrumbs"]["values"],
@@ -431,6 +476,32 @@ test(
             ],
             "can delegate log events to breadcrumbs"
         );
+    }
+);
+
+test(
+    'can buffer and manually flush Events',
+    function () {
+        $destination = new MockDirectEventCapture();
+
+        $buffer = new BufferedEventCapture($destination);
+
+        $client = new MockSentryClient($buffer);
+
+        $client->captureException(exception_with("boom"));
+        $client->captureException(exception_with("ouch"));
+
+        eq(count($destination->requests), 0, "can buffer Events");
+
+        $buffer->flush();
+
+        eq(count($destination->requests), 2, "can flush buffered Events");
+
+        $destination->requests = [];
+
+        $buffer->flush();
+
+        eq(count($destination->requests), 0, "flushed events get cleared from the buffer");
     }
 );
 

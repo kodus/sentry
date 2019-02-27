@@ -2,12 +2,10 @@
 
 namespace Kodus\Sentry;
 
-use Kodus\Sentry\Model\Breadcrumb;
 use Kodus\Sentry\Model\Event;
-use Kodus\Sentry\Model\Level;
+use Kodus\Sentry\Model\EventCapture;
 use Kodus\Sentry\Model\UserInfo;
 use Psr\Http\Message\ServerRequestInterface;
-use RuntimeException;
 use Throwable;
 
 // TODO grouping / fingerprints https://docs.sentry.io/learn/rollups/?platform=node#custom-grouping
@@ -20,29 +18,9 @@ class SentryClient
     const VERSION = "1.0.0";
 
     /**
-     * @var string|null optional proxy server for outgoing HTTP requests (e.g. "tcp://proxy.example.com:5100")
-     */
-    public $proxy;
-
-    /**
      * @var int percentage of events actually sent to the server (the rest will be silently ignored)
      */
     public $sample_rate = 100;
-
-    /**
-     * @var string Sentry API endpoint
-     */
-    private $url;
-
-    /**
-     * @var string X-Sentry authentication header template
-     */
-    private $auth_header;
-
-    /**
-     * @var string
-     */
-    private $dsn;
 
     /**
      * @var SentryClientExtension[]
@@ -50,30 +28,18 @@ class SentryClient
     private $extensions;
 
     /**
-     * @param string                  $dsn        Sentry DSN
-     * @param SentryClientExtension[] $extensions list of Client Extensions to use
+     * @var EventCapture
      */
-    public function __construct(string $dsn, array $extensions = [])
+    private $capture;
+
+    /**
+     * @param EventCapture            $capture    Event Capture implementation to use
+     * @param SentryClientExtension[] $extensions List of Client Extensions to use
+     */
+    public function __construct(EventCapture $capture, array $extensions = [])
     {
-        $this->dsn = $dsn;
-
+        $this->capture = $capture;
         $this->extensions = $extensions;
-
-        $url = parse_url($this->dsn);
-
-        $auth_tokens = implode(
-            ", ",
-            [
-                "Sentry sentry_version=7",
-                "sentry_timestamp=%s",
-                "sentry_key={$url['user']}",
-                "sentry_client=kodus-sentry/" . self::VERSION,
-            ]
-        );
-
-        $this->auth_header = "X-Sentry-Auth: " . $auth_tokens;
-
-        $this->url = "{$url['scheme']}://{$url['host']}/api{$url['path']}/store/";
     }
 
     /**
@@ -88,7 +54,7 @@ class SentryClient
         if (mt_rand(0, 99) < $this->sample_rate) {
             $event = $this->createEvent($exception, $request);
 
-            $this->captureEvent($event);
+            $this->capture->captureEvent($event);
         }
     }
 
@@ -126,34 +92,6 @@ class SentryClient
     }
 
     /**
-     * Capture (HTTP `POST`) a given {@see Event} to Sentry.
-     *
-     * @param Event $event
-     */
-    protected function captureEvent(Event $event): void
-    {
-        $body = json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $headers = [
-            "Accept: application/json",
-            "Content-Type: application/json",
-            sprintf($this->auth_header, $event->timestamp),
-        ];
-
-        try {
-            $response = $this->fetch("POST", $this->url, $body, $headers);
-        } catch (RuntimeException $error) {
-            error_log("SentryClient: unable to access Sentry service [{$error->getMessage()}]");
-
-            return; // NOTE: fail silently
-        }
-
-        $data = json_decode($response, true);
-
-        $event->event_id = $data["id"];
-    }
-
-    /**
      * @return int current time
      */
     protected function createTimestamp(): int
@@ -176,58 +114,5 @@ class SentryClient
             $bytes[9] & 0x3f | 0x80, $bytes[10],
             $bytes[11], $bytes[12], $bytes[13], $bytes[14], $bytes[15], $bytes[16]
         );
-    }
-
-    /**
-     * Perform an HTTP request and return the response body.
-     *
-     * The request must return a 200 status-code.
-     *
-     * @param string $method HTTP method ("GET", "POST", etc.)
-     * @param string $url
-     * @param string $body
-     * @param array  $headers
-     *
-     * @return string response body
-     *
-     * @throws RuntimeException if unable to open the resource
-     * @throws RuntimeException for unexpected (non-200) response code
-     */
-    protected function fetch(string $method, string $url, string $body, array $headers = []): string
-    {
-        $context = stream_context_create([
-            "http" => [
-                // http://docs.php.net/manual/en/context.http.php
-                "method"        => $method,
-                "header"        => implode("\r\n", $headers),
-                "content"       => $body,
-                "ignore_errors" => true,
-                "proxy"         => $this->proxy,
-            ],
-        ]);
-
-        $stream = @fopen($url, "r", false, $context);
-
-        if ($stream === false) {
-            throw new RuntimeException("unable to open resource: {$method} {$url}");
-        }
-
-        $response = stream_get_contents($stream);
-
-        $headers = stream_get_meta_data($stream)['wrapper_data'];
-
-        $status_line = $headers[0];
-
-        fclose($stream);
-
-        preg_match('{HTTP\/\S*\s(\d{3})}', $status_line, $match);
-
-        $status = $match[1];
-
-        if ($status !== "200") {
-            throw new RuntimeException("unexpected response status: {$status_line} ({$method} {$url})");
-        }
-
-        return $response;
     }
 }

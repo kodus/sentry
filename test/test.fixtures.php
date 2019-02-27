@@ -6,7 +6,9 @@ use Kodus\Sentry\Extensions\ClientSniffer;
 use Kodus\Sentry\Extensions\EnvironmentReporter;
 use Kodus\Sentry\Extensions\ExceptionReporter;
 use Kodus\Sentry\Extensions\RequestReporter;
-use Kodus\Sentry\Model\Event;
+use Kodus\Sentry\Model\DirectEventCapture;
+use Kodus\Sentry\Model\DSN;
+use Kodus\Sentry\Model\EventCapture;
 use Kodus\Sentry\SentryClient;
 
 /**
@@ -94,25 +96,29 @@ class Request
     }
 }
 
+/**
+ * Mock Client extension - uses a fixed Event ID and a preset, modifiable timestamp for testing.
+ */
 class MockSentryClient extends SentryClient
 {
     const MOCK_EVENT_ID = "a1f1cddefbd54085822f50ef14c7c9a8";
-
-    const MOCK_DSN = "https://0123456789abcdef0123456789abcdef@sentry.io/1234567";
-
-    public $time = 1538738714;
 
     /**
      * @var BreadcrumbLogger
      */
     public $logger;
 
-    public function __construct(?array $extensions = null)
+    /**
+     * @var int timestamp
+     */
+    public $time = 1538738714;
+
+    public function __construct(EventCapture $capture, ?array $extensions = null)
     {
         $this->logger = new BreadcrumbLogger();
 
         parent::__construct(
-            self::MOCK_DSN,
+            $capture,
             $extensions ?: [
                 new EnvironmentReporter(),
                 new RequestReporter(),
@@ -123,11 +129,6 @@ class MockSentryClient extends SentryClient
         );
     }
 
-    /**
-     * @var Request[]
-     */
-    public $requests = [];
-
     protected function createTimestamp(): int
     {
         return $this->time;
@@ -137,6 +138,29 @@ class MockSentryClient extends SentryClient
     {
         return self::MOCK_EVENT_ID;
     }
+}
+
+/**
+ * This mock captures Requests rather than posting them via HTTP.
+ *
+ * It also exposes the internal `fetch()` method, so we can test the HTTP functionality.
+ */
+class MockDirectEventCapture extends DirectEventCapture
+{
+    /**
+     * @var Request[]
+     */
+    public $requests = [];
+
+    public function __construct(?DSN $dsn = null, ?string $proxy = null)
+    {
+        parent::__construct($dsn ?: new MockDSN(), $proxy);
+    }
+
+    public function testFetch(string $method, string $url, string $body, array $headers): string
+    {
+        return parent::fetch($method, $url, $body, $headers);
+    }
 
     protected function fetch(string $method, string $url, string $body, array $headers = []): string
     {
@@ -144,13 +168,11 @@ class MockSentryClient extends SentryClient
 
         return "";
     }
-
-    public function testFetch(string $method, string $url, string $body, array $headers): string
-    {
-        return parent::fetch($method, $url, $body, $headers);
-    }
 }
 
+/**
+ * This mock exposes the internal `formatValue()` method for easier testing.
+ */
 class MockExceptionReporter extends ExceptionReporter
 {
     public function testFormat($value): string
@@ -159,11 +181,34 @@ class MockExceptionReporter extends ExceptionReporter
     }
 }
 
+/**
+ * This mock uses a preset, modifiable timestamp for testing.
+ */
 class MockBreadcrumbLogger extends BreadcrumbLogger
 {
     public $time = 1540994720;
 
     protected function createTimestamp(): int
+    {
+        return $this->time;
+    }
+}
+
+/**
+ * This mock uses a fixed DSN and a preset, modifiable timestamp for testing.
+ */
+class MockDSN extends DSN
+{
+    const MOCK_DSN = "https://0123456789abcdef0123456789abcdef@sentry.io/1234567";
+
+    public $time = 1538738714;
+
+    public function __construct()
+    {
+        parent::__construct(self::MOCK_DSN);
+    }
+
+    protected function getTime(): float
     {
         return $this->time;
     }
