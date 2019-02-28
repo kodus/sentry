@@ -84,8 +84,6 @@ class BreadcrumbLogger extends AbstractLogger implements SentryClientExtension
             $event->breadcrumbs,
             $this->breadcrumbs
         );
-
-        $this->clear();
     }
 
     /**
