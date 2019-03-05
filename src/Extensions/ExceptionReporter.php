@@ -26,6 +26,11 @@ use Throwable;
 class ExceptionReporter implements SentryClientExtension
 {
     /**
+     * @var string placeholder for unavailable file-names
+     */
+    const NO_FILE = "{no file}";
+
+    /**
      * @var string root path (with trailing directory-separator)
      */
     protected $root_path;
@@ -34,6 +39,11 @@ class ExceptionReporter implements SentryClientExtension
      * @var int maximum length of formatted string-values
      */
     protected $max_string_length;
+
+    /**
+     * @var string[] file-name patterns to blacklist from stack-traces
+     */
+    protected $blacklist;
 
     /**
      * Severity of `ErrorException` mappings are identical to the official (2.0) client
@@ -66,16 +76,24 @@ class ExceptionReporter implements SentryClientExtension
     /**
      * The optional `$root_path`, if given, will be stripped from filenames.
      *
+     * The optional `$blacklist` is an array of {@see \fnmatch()} patterns, which will be applied
+     * to relative paths of source-file references in stack-traces. You can use this to filter
+     * scripts that define/bootstrap sensitive values like passwords and hostnames, so that
+     * these lines will never show up in a stack-trace.
+     *
      * @param string|null $root_path         absolute project root-path (e.g. Composer root path; optional)
      * @param int         $max_string_length PHP values longer than this will be truncated
+     * @param string[]    $blacklist         Optional file-name patterns to blacklist from stack-traces
      */
-    public function __construct(?string $root_path = null, $max_string_length = 200)
+    public function __construct(?string $root_path = null, $max_string_length = 200, array $blacklist = [])
     {
         $this->root_path = $root_path
             ? rtrim($root_path, "/\\") . "/"
             : null;
 
         $this->max_string_length = $max_string_length;
+
+        $this->blacklist = $blacklist;
     }
 
     public function apply(Event $event, Throwable $exception, ?ServerRequestInterface $request): void
@@ -162,7 +180,7 @@ class ExceptionReporter implements SentryClientExtension
     {
         $filename = isset($entry["file"])
             ? $entry["file"]
-            : "{no file}";
+            : self::NO_FILE;
 
         $function = isset($entry["class"])
             ? $entry["class"] . @$entry["type"] . @$entry["function"]
@@ -174,20 +192,42 @@ class ExceptionReporter implements SentryClientExtension
 
         $frame = new StackFrame($filename, $function, $lineno);
 
-        if ($filename !== "{no file}") {
-            $this->loadContext($frame, $filename, $lineno, 5);
+        if ($this->root_path && strpos($filename, $this->root_path) !== -1) {
+            $frame->abs_path = $filename;
+            $frame->filename = substr($filename, strlen($this->root_path));
+        }
 
-            if ($this->root_path && strpos($filename, $this->root_path) !== -1) {
-                $frame->abs_path = $filename;
-                $frame->filename = substr($filename, strlen($this->root_path));
+        if ($this->isBlacklisted($filename)) {
+            $frame->context_line = "### BLACKLISTED ###";
+        } else {
+            if ($filename !== self::NO_FILE) {
+                $this->loadContext($frame, $filename, $lineno, 5);
+            }
+
+            if (isset($entry['args'])) {
+                $frame->vars = $this->extractVars($entry);
             }
         }
 
-        if (isset($entry['args'])) {
-            $frame->vars = $this->extractVars($entry);
+        return $frame;
+    }
+
+    /**
+     * @param string $filename absolute path to source-file
+     *
+     * @return bool true, if the given file matches any defined blacklist pattern
+     *
+     * @see $blacklist
+     */
+    protected function isBlacklisted(string $filename): bool
+    {
+        foreach ($this->blacklist as $pattern) {
+            if (fnmatch($pattern, substr($filename, strlen($this->root_path)))) {
+                return true;
+            }
         }
 
-        return $frame;
+        return false;
     }
 
     /**

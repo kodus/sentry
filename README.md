@@ -181,6 +181,7 @@ The constructor accepts two optional argument:
 
   * `$root_path` - if specified, the project root-path will be removed from visible filenames in stack-traces.
   * `$max_string_length` - specifies the maximum length at which reported PHP values will be truncated.
+  * `$blacklist` - specifies one or more filename patterns to blacklist from stack-traces.
 
 In addition, the public `$error_levels` property lets you customize how PHP error-levels map to
 Sentry severity-levels. The default configuration matches that of the official 2.0 client.
