@@ -90,8 +90,8 @@ test(
     }
 );
 
-function test_exception_capture($use_blacklist = false) {
-    return function () use ($use_blacklist) {
+function test_exception_capture($use_filter = false) {
+    return function () use ($use_filter) {
         $dsn = new MockDSN();
 
         $capture = new MockDirectEventCapture($dsn);
@@ -99,7 +99,7 @@ function test_exception_capture($use_blacklist = false) {
         $client = new MockSentryClient(
             $capture,
             null,
-            $use_blacklist
+            $use_filter
                 ? ["*.fixtures.php"]
                 : []
         );
@@ -181,16 +181,16 @@ function test_exception_capture($use_blacklist = false) {
         eq($inner_frames[2]["lineno"], 34);
         eq($inner_frames[3]["lineno"], 31, "can capture line-number of failed call-site");
 
-        $BLACKLISTED = "### BLACKLISTED ###";
+        $FILTERED = "### FILTERED FILE ###";
 
-        if ($use_blacklist) {
-            ok(! isset($inner_frames[0]["pre_context"]), "can blacklist pre_context");
+        if ($use_filter) {
+            ok(! isset($inner_frames[0]["pre_context"]), "filtering removes pre_context");
 
-            eq($inner_frames[0]["context_line"], $BLACKLISTED, "can blacklist context_line");
+            eq($inner_frames[0]["context_line"], $FILTERED, "filtering removes context_line");
 
-            ok(! isset($inner_frames[0]["post_context"]), "can blacklist post_context");
+            ok(! isset($inner_frames[0]["post_context"]), "filtering removes post_context");
 
-            ok(! isset($inner_frames[0]["vars"]), "can blacklist arguments");
+            ok(! isset($inner_frames[0]["vars"]), "filtering omits arguments");
         } else {
             eq(
                 $inner_frames[0]["pre_context"],
@@ -242,7 +242,7 @@ test(
 );
 
 test(
-    "can capture Exception without vars and stack-traces from files matching a blacklist pattern",
+    "can capture Exception without vars and stack-traces from files matching a filter pattern",
     test_exception_capture(true)
 );
 

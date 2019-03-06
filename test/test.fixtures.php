@@ -113,7 +113,7 @@ class MockSentryClient extends SentryClient
      */
     public $time = 1538738714;
 
-    public function __construct(EventCapture $capture, ?array $extensions = null, ?array $blacklist = [])
+    public function __construct(EventCapture $capture, ?array $extensions = null, ?array $filters = [])
     {
         $this->logger = new BreadcrumbLogger();
 
@@ -122,7 +122,7 @@ class MockSentryClient extends SentryClient
             $extensions ?: [
                 new EnvironmentReporter(),
                 new RequestReporter(),
-                new ExceptionReporter(__DIR__, 200, $blacklist),
+                new ExceptionReporter(__DIR__, 200, $filters),
                 new ClientSniffer(),
                 new ClientIPDetector(),
             ]

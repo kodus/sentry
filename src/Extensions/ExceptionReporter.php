@@ -41,9 +41,9 @@ class ExceptionReporter implements SentryClientExtension
     protected $max_string_length;
 
     /**
-     * @var string[] file-name patterns to blacklist from stack-traces
+     * @var string[] file-name patterns to filter from stack-traces
      */
-    protected $blacklist;
+    protected $filters;
 
     /**
      * Severity of `ErrorException` mappings are identical to the official (2.0) client
@@ -76,16 +76,16 @@ class ExceptionReporter implements SentryClientExtension
     /**
      * The optional `$root_path`, if given, will be stripped from filenames.
      *
-     * The optional `$blacklist` is an array of {@see \fnmatch()} patterns, which will be applied
+     * The optional `$filters` is an array of {@see \fnmatch()} patterns, which will be applied
      * to relative paths of source-file references in stack-traces. You can use this to filter
      * scripts that define/bootstrap sensitive values like passwords and hostnames, so that
      * these lines will never show up in a stack-trace.
      *
      * @param string|null $root_path         absolute project root-path (e.g. Composer root path; optional)
      * @param int         $max_string_length PHP values longer than this will be truncated
-     * @param string[]    $blacklist         Optional file-name patterns to blacklist from stack-traces
+     * @param string[]    $filters           Optional file-name patterns to filter from stack-traces
      */
-    public function __construct(?string $root_path = null, $max_string_length = 200, array $blacklist = [])
+    public function __construct(?string $root_path = null, $max_string_length = 200, array $filters = [])
     {
         $this->root_path = $root_path
             ? rtrim($root_path, "/\\") . "/"
@@ -93,7 +93,7 @@ class ExceptionReporter implements SentryClientExtension
 
         $this->max_string_length = $max_string_length;
 
-        $this->blacklist = $blacklist;
+        $this->filters = $filters;
     }
 
     public function apply(Event $event, Throwable $exception, ?ServerRequestInterface $request): void
@@ -197,8 +197,8 @@ class ExceptionReporter implements SentryClientExtension
             $frame->filename = substr($filename, strlen($this->root_path));
         }
 
-        if ($this->isBlacklisted($filename)) {
-            $frame->context_line = "### BLACKLISTED ###";
+        if ($this->isFiltered($filename)) {
+            $frame->context_line = "### FILTERED FILE ###";
         } else {
             if ($filename !== self::NO_FILE) {
                 $this->loadContext($frame, $filename, $lineno, 5);
@@ -215,13 +215,13 @@ class ExceptionReporter implements SentryClientExtension
     /**
      * @param string $filename absolute path to source-file
      *
-     * @return bool true, if the given file matches any defined blacklist pattern
+     * @return bool true, if the given file matches any defined filter pattern
      *
-     * @see $blacklist
+     * @see $filters
      */
-    protected function isBlacklisted(string $filename): bool
+    protected function isFiltered(string $filename): bool
     {
-        foreach ($this->blacklist as $pattern) {
+        foreach ($this->filters as $pattern) {
             if (fnmatch($pattern, substr($filename, strlen($this->root_path)))) {
                 return true;
             }
