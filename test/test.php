@@ -100,7 +100,7 @@ function test_exception_capture($use_filter = false) {
             $capture,
             null,
             $use_filter
-                ? ["*.fixtures.php"]
+                ? [__DIR__ . "/*.fixtures.php"]
                 : []
         );
 

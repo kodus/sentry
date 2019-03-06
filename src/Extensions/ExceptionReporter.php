@@ -31,7 +31,7 @@ class ExceptionReporter implements SentryClientExtension
     const NO_FILE = "{no file}";
 
     /**
-     * @var string root path (with trailing directory-separator)
+     * @var string|null root path (with trailing directory-separator)
      */
     protected $root_path;
 
@@ -77,7 +77,7 @@ class ExceptionReporter implements SentryClientExtension
      * The optional `$root_path`, if given, will be stripped from filenames.
      *
      * The optional `$filters` is an array of {@see \fnmatch()} patterns, which will be applied
-     * to relative paths of source-file references in stack-traces. You can use this to filter
+     * to absolute paths of source-file references in stack-traces. You can use this to filter
      * scripts that define/bootstrap sensitive values like passwords and hostnames, so that
      * these lines will never show up in a stack-trace.
      *
@@ -215,14 +215,14 @@ class ExceptionReporter implements SentryClientExtension
     /**
      * @param string $filename absolute path to source-file
      *
-     * @return bool true, if the given file matches any defined filter pattern
+     * @return bool true, if the given filename matches a defined filter pattern
      *
      * @see $filters
      */
     protected function isFiltered(string $filename): bool
     {
         foreach ($this->filters as $pattern) {
-            if (fnmatch($pattern, substr($filename, strlen($this->root_path)))) {
+            if (fnmatch($pattern, $filename)) {
                 return true;
             }
         }
