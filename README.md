@@ -48,12 +48,16 @@ Most modern frameworks by now have some sort of DI container and an error-handle
 To avoid getting caught up in the specifics of various frameworks, in this section, we'll demonstrate
 how to bootstrap and integrate the client independently of any specific framework.
 
-To bootstrap the client itself, you need a [Sentry DSN](https://docs.sentry.io/learn/configuration/?platform=node#dsn)
-and a your choice of extensions - this example uses all the built-in extensions:
+To bootstrap the client itself, you need a [Sentry DSN](https://docs.sentry.io/learn/configuration/?platform=node#dsn),
+an `EventCapture` implementation, and a your choice of extensions - this example uses `DirectEventCapture`
+and most of the built-in extensions:
 
 ```php
 $client = new SentryClient(
-    "https://0123456789abcdef0123456789abcdef@sentry.io/1234567",
+    new DirectEventCapture(
+        new DSN("https://0123456789abcdef0123456789abcdef@sentry.io/1234567"),
+        "tcp://proxy.example.com:5100" // optional: required if you're behind a proxy
+    ),
     [
         new EnvironmentReporter(),
         new RequestReporter(),
@@ -63,11 +67,7 @@ $client = new SentryClient(
     ]
 );
 
-// optional settings:
-
-$client->proxy = "tcp://proxy.example.com:5100"; // for outgoing HTTP requests, if you're behind a proxy
-
-$client->sample_rate = 50; // percentage of calls to captureException() that actually get captured
+$client->sample_rate = 50; // optional: percentage of calls to `captureException()` to actually capture
 ```
 
 Some extensions support additional options, which will be described in the [Configuration](#configuration) section.
@@ -200,6 +200,43 @@ The built-in patterns support most ordinary cache/proxy-servers.
 
 The default `$log_levels` match those of the official (2.0) client - if needed, you can
 override with custom mappings from PSR-5 log-level to Sentry severity-level.
+
+#### `BufferedEventCapture`
+
+A buffered `EventCapture` implementation is available.
+
+If you're capturing exceptions/errors only, you probably don't need this - but if you're mapping
+warnings and notices to `ErrorException` with an error-handler, you may wish to avoid blocking the
+response while posting to Sentry.
+
+You can accomplish this using the `BufferedEventCapture` decorator, which allows you to defer the
+actual HTTP request(s) until after you've sent the response to the user.
+
+In this case, you will need to bootstrap the capture and client instances separately:
+
+```php
+$buffer = new BufferedEventCapture(
+   new DirectEventCapture(
+       new DSN("https://0123456789abcdef0123456789abcdef@sentry.io/1234567")
+   ),
+);
+
+$client = new SentryClient($buffer);
+```
+
+Since Events will now get buffered rather than directly posted to Sentry, you will need to manually
+flush the Events at the of the request.
+
+In a typical PHP FCGI SAPI-environment, you can accomplish this by explicitly closing the HTTP
+response immediately before flushing the events to Sentry - for example, from an `index.php` file:
+
+```php
+register_shutdown_function(function () use ($buffer) {
+    fastcgi_finish_request();
+    
+    $buffer->flush();
+});
+``` 
 
 #### Customization
 
