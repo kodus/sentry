@@ -90,14 +90,19 @@ test(
     }
 );
 
-test(
-    "can capture Exception",
-    function () {
+function test_exception_capture($use_filter = false) {
+    return function () use ($use_filter) {
         $dsn = new MockDSN();
 
         $capture = new MockDirectEventCapture($dsn);
 
-        $client = new MockSentryClient($capture);
+        $client = new MockSentryClient(
+            $capture,
+            null,
+            $use_filter
+                ? ["*.fixtures.php"]
+                : []
+        );
 
         $client->captureException(exception_with("ouch"));
 
@@ -176,37 +181,49 @@ test(
         eq($inner_frames[2]["lineno"], 34);
         eq($inner_frames[3]["lineno"], 31, "can capture line-number of failed call-site");
 
-        eq(
-            $inner_frames[0]["context_line"],
-            '        $fixture->outer($arg);',
-            "can capture context line"
-        );
+        $FILTERED = "### FILTERED FILE ###";
 
-        eq(
-            $inner_frames[0]["pre_context"],
-            [
-                '',
-                'function exception_with($arg): Exception {',
-                '    $fixture = new TraceFixture();',
-                '',
-                '    try {'
-            ],
-            "can capture pre_context"
-        );
+        if ($use_filter) {
+            ok(! isset($inner_frames[0]["pre_context"]), "filtering removes pre_context");
 
-        eq(
-            $inner_frames[0]["post_context"],
-            [
-                '    } catch (Exception $exception) {',
-                '        return $exception;',
-                '    }',
-                '}',
-                ''
-            ],
-            "can capture post_context"
-        );
+            eq($inner_frames[0]["context_line"], $FILTERED, "filtering removes context_line");
 
-        eq($inner_frames[0]["vars"], ['$arg' => '"ouch"'], "can capture arguments");
+            ok(! isset($inner_frames[0]["post_context"]), "filtering removes post_context");
+
+            ok(! isset($inner_frames[0]["vars"]), "filtering omits arguments");
+        } else {
+            eq(
+                $inner_frames[0]["pre_context"],
+                [
+                    '',
+                    'function exception_with($arg): Exception {',
+                    '    $fixture = new TraceFixture();',
+                    '',
+                    '    try {'
+                ],
+                "can capture pre_context"
+            );
+
+            eq(
+                $inner_frames[0]["context_line"],
+                '        $fixture->outer($arg);',
+                "can capture context_line"
+            );
+
+            eq(
+                $inner_frames[0]["post_context"],
+                [
+                    '    } catch (Exception $exception) {',
+                    '        return $exception;',
+                    '    }',
+                    '}',
+                    ''
+                ],
+                "can capture post_context"
+            );
+
+            eq($inner_frames[0]["vars"], ['$arg' => '"ouch"'], "can capture arguments");
+        }
 
         $outer = $body["exception"]["values"][1];
 
@@ -216,7 +233,17 @@ test(
         eq($outer_frames[1]["function"], TraceFixture::class . "->outer");
 
 //        echo json_encode($body, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-    }
+    };
+}
+
+test(
+    "can capture Exception with vars and stack-traces",
+    test_exception_capture()
+);
+
+test(
+    "can capture Exception without vars and stack-traces from files matching a filter pattern",
+    test_exception_capture(true)
 );
 
 test(
