@@ -183,8 +183,8 @@ class ExceptionReporter implements SentryClientExtension
             : self::NO_FILE;
 
         $function = isset($entry["class"])
-            ? $entry["class"] . @$entry["type"] . @$entry["function"]
-            : @$entry["function"];
+            ? $entry["class"] . (isset($entry["type"]) ? $entry["type"] : '') . (isset($entry["function"]) ? $entry["function"] : '')
+            : (isset($entry["function"]) ? $entry["function"] : '');
 
         $lineno = array_key_exists("line", $entry)
             ? (int) $entry["line"]
