@@ -12,10 +12,12 @@
     "require": {
         "php": ">=7.1",
         "psr/http-message": "^1.0",
-        "psr/log": "^1.0"
+        "psr/log": "^1.0",
+        "codeception/codeception": "^5.0",
+        "codeception/module-phpbrowser": "*",
+        "codeception/module-asserts": "*"
     },
     "require-dev": {
-        "mindplay/testies": "^0.3.2",
         "nyholm/psr7": "^1.0"
     },
     "autoload": {
@@ -25,7 +27,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "\\": "test/"
+            "Tests\\Unit\\": "tests/Unit"
         }
     }
 }
