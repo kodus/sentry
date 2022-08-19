@@ -1,3 +1,4 @@
 /vendor
 /.idea
 /tests/_output
+/composer.lock
