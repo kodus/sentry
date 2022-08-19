@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use Closure;
+use Exception;
+use Tests\Fixtures\TraceFixture;
+
 /**
  * Inherited Methods
  * @method void wantToTest($text)
@@ -26,4 +30,23 @@ class UnitTester extends \Codeception\Actor
     /**
      * Define custom actions here
      */
+
+    public function createExceptionWith($arg): ?Exception
+    {
+        $fixture = new TraceFixture();
+
+        try {
+            $fixture->outer($arg);
+        } catch (Exception $exception) {
+            return $exception;
+        }
+
+        return null;
+    }
+
+    public function createEmptyClosure(): Closure
+    {
+        return function () {
+        };
+    }
 }

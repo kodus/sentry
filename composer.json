@@ -10,7 +10,8 @@
         }
     ],
     "require": {
-        "php": ">=7.1",
+        "php": ">=7.4",
+        "ext-json": "*",
         "psr/http-message": "^1.0",
         "psr/log": "^1.0",
         "codeception/codeception": "^5.0",
@@ -27,6 +28,9 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "Tests\\Support\\": "tests/Support",
+            "Tests\\Mocks\\": "tests/Mocks",
+            "Tests\\Fixtures\\": "tests/Fixtures",
             "Tests\\Unit\\": "tests/Unit"
         }
     }

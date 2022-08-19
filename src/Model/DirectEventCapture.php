@@ -43,16 +43,10 @@ class DirectEventCapture implements EventCapture
         ];
 
         try {
-            $response = $this->fetch("POST", $this->dsn->getURL(), $body, $headers);
+            $this->fetch("POST", $this->dsn->getURL(), $body, $headers);
         } catch (RuntimeException $error) {
             error_log("SentryClient: unable to access Sentry service [{$error->getMessage()}]");
-
-            return; // NOTE: fail silently
         }
-
-        $data = json_decode($response, true);
-
-        $event->event_id = $data["id"];
     }
 
     /**
