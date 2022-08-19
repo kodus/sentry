@@ -10,12 +10,11 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
+        "php": ">=8.0",
         "ext-json": "*",
         "psr/http-message": "^1.0",
         "psr/log": "^1.0",
         "codeception/codeception": "^5.0",
-        "codeception/module-phpbrowser": "*",
         "codeception/module-asserts": "*"
     },
     "require-dev": {
