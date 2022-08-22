@@ -46,7 +46,7 @@ class DirectEventCapture implements EventCapture
         try {
             $response = $this->fetch("POST", $this->dsn->getURL(), $body, $headers);
 
-            $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
 
             $event->event_id = $data["id"];
         } catch (RuntimeException $error) {
