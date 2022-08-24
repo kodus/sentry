@@ -171,6 +171,9 @@ application is a CLI script handling many requests, you will need to manually ca
 on the logger instance at the end of a successful request, since otherwise log-entries will
 accumulate across requests.
 
+Notice: PHP 7.4 introduced a new [ini setting](https://www.php.net/manual/en/ini.core.php#ini.zend.exception-ignore-args) (`zend.exception_ignore_args`) for excluding arguments from stack traces.
+If you want arguments to be passed on to Sentry you will need to turn this setting off.
+
 #### Configuration
 
 A few of the extensions support optional constructor arguments to configure some optional features.
