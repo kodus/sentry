@@ -26,6 +26,6 @@ class MockDirectEventCapture extends DirectEventCapture
     {
         $this->requests[] = new MockRequest($body, $headers);
 
-        return "";
+        return json_encode(['id' => 1]);
     }
 }
