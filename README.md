@@ -4,7 +4,7 @@
 Lightweight [Sentry](https://sentry.io/welcome/) client with no dependencies.
 
 [![PHP Version](https://img.shields.io/badge/php-7.1%2B-blue.svg)](https://packagist.org/packages/kodus/sentry)
-[![Build Status](https://travis-ci.org/kodus/sentry.svg?branch=master)](https://travis-ci.org/kodus/sentry)
+![Build Status](https://github.com/kodus/sentry/actions/workflows/test.yml/badge.svg)
 
 ### About
 
