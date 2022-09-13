@@ -2,6 +2,7 @@
 
 namespace Kodus\Sentry\Model;
 
+use JsonException;
 use function json_decode;
 use function json_encode;
 use RuntimeException;
@@ -43,9 +44,15 @@ class DirectEventCapture implements EventCapture
         ];
 
         try {
-            $this->fetch("POST", $this->dsn->getURL(), $body, $headers);
+            $response = $this->fetch("POST", $this->dsn->getURL(), $body, $headers);
+
+            $data = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
+            $event->event_id = $data["id"];
         } catch (RuntimeException $error) {
             error_log("SentryClient: unable to access Sentry service [{$error->getMessage()}]");
+        } catch (JsonException $json_exception) {
+            error_log("SentryClient: malformed json received from Sentry [{$json_exception->getMessage()}]");
         }
     }
 

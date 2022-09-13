@@ -145,7 +145,7 @@ class Event implements JsonSerializable
     /**
      * @internal
      */
-    public function jsonSerialize()
+    public function jsonSerialize(): array
     {
         $data = array_filter(get_object_vars($this));
 
