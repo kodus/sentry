@@ -162,7 +162,7 @@ class ExceptionReporter implements SentryClientExtension
     {
         $frames = [];
 
-        foreach ($trace as $index => $entry) {
+        foreach ($trace as $entry) {
             $frames[] = $this->createStackFrame($entry);
         }
 
@@ -178,13 +178,9 @@ class ExceptionReporter implements SentryClientExtension
      */
     protected function createStackFrame(array $entry): StackFrame
     {
-        $filename = isset($entry["file"])
-            ? $entry["file"]
-            : self::NO_FILE;
+        $filename = $entry["file"] ?? self::NO_FILE;
 
-        $function = isset($entry["class"])
-            ? $entry["class"] . @$entry["type"] . @$entry["function"]
-            : @$entry["function"];
+        $function = $this->getFunctionFromEntry($entry);
 
         $lineno = array_key_exists("line", $entry)
             ? (int) $entry["line"]
@@ -429,5 +425,18 @@ class ExceptionReporter implements SentryClientExtension
         }
 
         return "{{$type}}"; // "unknown type" and possibly unsupported (future) types
+    }
+
+    private function getFunctionFromEntry(array $entry)
+    {
+        $function = $entry["function"] ?? "";
+        $class = $entry["class"] ?? "";
+        $type = $entry["type"] ?? "";
+
+        if ($class !== "") {
+            return $class . $type . $function;
+        } else {
+            return $function;
+        }
     }
 }
