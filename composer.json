@@ -1,6 +1,6 @@
 {
-    "name": "kodus/sentry",
-    "description": "Lightweight alternative to the official Sentry client for PHP",
+    "name": "sturents/sentry-light",
+    "description": "Lightweight alternative to the official Sentry client for PHP. Forked from kodus/sentry",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -13,12 +13,12 @@
         "php": ">=8.0",
         "ext-json": "*",
         "psr/http-message": "^1.0",
-        "psr/log": "^1.0",
-        "codeception/codeception": "^5.0",
-        "codeception/module-asserts": "*"
+        "psr/log": "^1.0"
     },
     "require-dev": {
-        "nyholm/psr7": "^1.0"
+        "nyholm/psr7": "^1.0",
+        "codeception/codeception": "^5.0",
+        "codeception/module-asserts": "*"
     },
     "autoload": {
         "psr-4": {
