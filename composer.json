@@ -18,7 +18,8 @@
     "require-dev": {
         "nyholm/psr7": "^1.0",
         "codeception/codeception": "^5.0",
-        "codeception/module-asserts": "*"
+        "codeception/module-asserts": "*",
+        "vimeo/psalm": "^5"
     },
     "autoload": {
         "psr-4": {

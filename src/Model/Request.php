@@ -25,9 +25,9 @@ class Request implements JsonSerializable
     public $query_string;
 
     /**
-     * @var string|null cookie values (unparsed, as a string)
+     * @var array cookie values (unparsed, as a string)
      */
-    public $cookies;
+    public $cookies = [];
 
     /**
      * @var string[] map where header-name => header-value

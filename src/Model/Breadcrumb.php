@@ -44,6 +44,10 @@ class Breadcrumb implements JsonSerializable
      */
     public function jsonSerialize(): array
     {
-        return array_filter(get_object_vars($this));
+		// Avoids a psalm error for unused property on "data"
+		$out = array_merge(get_object_vars($this), [
+			'data' => $this->data,
+		]);
+        return array_filter($out);
     }
 }

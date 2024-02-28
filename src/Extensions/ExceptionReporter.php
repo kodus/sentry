@@ -350,7 +350,7 @@ class ExceptionReporter implements SentryClientExtension
      *
      * @param mixed[] $values raw PHP values
      *
-     * @return string[] formatted values
+     * @return list<string> formatted values
      */
     protected function formatValues(array $values): array
     {
