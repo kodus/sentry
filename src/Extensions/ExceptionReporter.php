@@ -70,7 +70,6 @@ class ExceptionReporter implements SentryClientExtension
         E_USER_ERROR        => Level::ERROR,
         E_NOTICE            => Level::INFO,
         E_USER_NOTICE       => Level::INFO,
-        E_STRICT            => Level::INFO,
     ];
 
     /**
