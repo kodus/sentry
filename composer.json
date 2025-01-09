@@ -32,5 +32,8 @@
             "Tests\\Fixtures\\": "tests/Fixtures",
             "Tests\\Unit\\": "tests/Unit"
         }
+    },
+    "scripts": {
+        "test": "codecept run"
     }
 }
