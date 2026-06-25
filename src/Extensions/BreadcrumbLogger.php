@@ -57,7 +57,7 @@ class BreadcrumbLogger extends AbstractLogger implements SentryClientExtension
     /**
      * @inheritdoc
      */
-    public function log($level, $message, array $context = [])
+    public function log($level, string|\Stringable $message, array $context = []): void
     {
         $this->breadcrumbs[] = new Breadcrumb(
             $this->createTimestamp(),

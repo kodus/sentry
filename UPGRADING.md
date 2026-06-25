@@ -1,3 +1,6 @@
+#### Upgrading from `3.x` to `4.0`
+Usage of the `BreadcrumbLogger` must adhere to the updated signature of the log method.
+
 #### Upgrading from `2.x` to `3.0`
 The repository now requires PHP 8.4 or higher. Ensure your environment is updated accordingly.
 

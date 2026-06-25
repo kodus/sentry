@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        operating-system: [ ubuntu-latest, ubuntu-20.04 ]
+        operating-system: [ ubuntu-latest, ubuntu-24.04 ]
         php: [ '8.4' ]
 
     steps:
